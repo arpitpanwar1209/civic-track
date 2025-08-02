@@ -2,6 +2,12 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from .models import Issue
 from .forms import IssueForm  # Make sure you have this form
+from django.contrib.admin.views.decorators import staff_member_required
+
+@staff_member_required
+def flagged_issues_list(request):
+    flagged_issues = FlaggedIssue.objects.select_related('issue', 'flagged_by').all()
+    return render(request, 'reports/flagged_issues_list.html', {'flagged_issues': flagged_issues})
 
 @login_required
 def submit_issue(request):
@@ -40,3 +46,20 @@ def flag_issue(request, issue_id):
         issue.save()
         return redirect('accounts:dashboard')
     return render(request, 'reports/flag_issue.html', {'issue': issue})
+
+@staff_member_required
+def resolve_flag(request, flag_id, action):
+    flag = FlaggedIssue.objects.get(pk=flag_id)
+
+    if action == 'approve':
+        # Keep the issue, just remove the flag
+        flag.delete()
+    elif action == 'reject':
+        # Maybe mark the issue as safe
+        flag.delete()
+    elif action == 'delete':
+        flag.issue.delete()
+        flag.delete()
+
+    return redirect('reports:flagged_issues_list')
+

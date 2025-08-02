@@ -1,0 +1,57 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}CivicTrack{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- ✅ Tailwind CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Optional: Add custom Tailwind config -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: '#2563eb', // blue-600
+            }
+          }
+        }
+      }
+    </script>
+</head>
+<body class="bg-gray-100 text-gray-900 font-sans min-h-screen">
+
+    <!-- ✅ Navbar -->
+   
+<nav class="bg-white shadow-md py-4 px-6 flex justify-between items-center">
+    <a href="{% url 'home' %}" class="text-xl font-bold text-primary">CivicTrack</a>
+    <div class="flex space-x-4">
+        <a href="{% url 'home' %}" class="text-gray-700 hover:text-primary">Home</a>
+
+        {% if user.is_authenticated %}
+            {% if user.role == 'provider' %}
+                <a href="{% url 'accounts:dashboard' %}" class="text-gray-700 hover:text-blue-600">Provider Dashboard</a>
+            {% elif user.role == 'consumer' %}
+                <a href="{% url 'accounts:dashboard' %}" class="text-gray-700 hover:text-blue-600">Consumer Dashboard</a>
+            {% endif %}
+            <a href="{% url 'accounts:logout' %}" class="text-gray-700 hover:text-primary">Logout</a>
+        {% else %}
+            <a href="{% url 'accounts:login' %}" class="text-gray-700 hover:text-primary">Login</a>
+            <a href="{% url 'accounts:signup' %}" class="text-gray-700 hover:text-primary">Register</a>
+        {% endif %}
+    </div>
+</nav>
+
+
+    <!-- ✅ Main Content -->
+    <main class="py-8 px-4">
+        {% block content %}
+        {% endblock %}
+    </main>
+
+</body>
+</html>

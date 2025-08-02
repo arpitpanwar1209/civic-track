@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 
+
 User = get_user_model()
 
 class Issue(models.Model):
@@ -74,3 +75,24 @@ class Issue(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+class FlagReport(models.Model):
+    REASON_CHOICES = [
+        ('inappropriate', 'Inappropriate Content'),
+        ('spam', 'Spam or Fake'),
+        ('duplicate', 'Duplicate Issue'),
+        ('other', 'Other'),
+    ]
+
+    issue = models.ForeignKey(Issue, on_delete=models.CASCADE, related_name='flags')
+    reported_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    reason = models.CharField(max_length=50, choices=REASON_CHOICES)
+    comment = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed = models.BooleanField(default=False)
+
+class Meta:
+        unique_together = ('issue', 'reported_by')
+
+def __str__(self):
+        return f"Flag on '{self.issue.title}' by {self.reported_by.username}"

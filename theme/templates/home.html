@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- Hero Section -->
+<section class="bg-white py-16">
+  <div class="max-w-7xl mx-auto px-4 text-center">
+    <h1 class="text-4xl font-extrabold text-gray-900 sm:text-5xl">
+      Empowering Civic Engagement
+    </h1>
+    <p class="mt-4 text-lg text-gray-600">
+      Report local issues, stay informed, and help improve your community with CivicTrack.
+    </p>
+    <div class="mt-6">
+      <a href="{% url 'accounts:signup' %}" class="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+        Get Started
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Features Section -->
+<section class="bg-gray-50 py-16">
+  <div class="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+    <div>
+      <h3 class="text-xl font-semibold text-gray-900">Easy Reporting</h3>
+      <p class="mt-2 text-gray-600">Quickly submit civic issues in your neighborhood.</p>
+    </div>
+    <div>
+      <h3 class="text-xl font-semibold text-gray-900">Real-time Tracking</h3>
+      <p class="mt-2 text-gray-600">Track the progress of your complaints and get updates.</p>
+    </div>
+    <div>
+      <h3 class="text-xl font-semibold text-gray-900">Verified Moderation</h3>
+      <p class="mt-2 text-gray-600">All reports are reviewed by officials and verified providers.</p>
+    </div>
+  </div>
+</section>
+
+<!-- How It Works -->
+<section class="bg-white py-16">
+  <div class="max-w-5xl mx-auto px-4 text-center">
+    <h2 class="text-3xl font-bold text-gray-900">How It Works</h2>
+    <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
+      <div>
+        <h4 class="text-lg font-semibold">1. Create an Account</h4>
+        <p class="text-gray-600">Sign up as a provider or consumer.</p>
+      </div>
+      <div>
+        <h4 class="text-lg font-semibold">2. Submit or Moderate Reports</h4>
+        <p class="text-gray-600">Consumers submit, providers moderate & act.</p>
+      </div>
+      <div>
+        <h4 class="text-lg font-semibold">3. Track Progress</h4>
+        <p class="text-gray-600">Stay informed as the issue is resolved.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Call to Action -->
+<section class="bg-blue-600 py-12">
+  <div class="max-w-4xl mx-auto px-4 text-center text-white">
+    <h2 class="text-3xl font-bold">Join CivicTrack Today</h2>
+    <p class="mt-2 text-lg">Be part of the change. Report issues, empower your city.</p>
+    <div class="mt-4">
+      <a href="{% url 'accounts:login' %}" class="inline-block px-6 py-3 bg-white text-blue-600 rounded-lg hover:bg-gray-100">
+        Log In
+      </a>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

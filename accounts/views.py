@@ -44,5 +44,5 @@ def provider_dashboard(request):
 
 @login_required
 def consumer_dashboard(request):
-    return render(request, 'accounts/consumer_dashboard.html')
-
+    issues = Issue.objects.filter(reported_by=request.user)
+    return render(request, 'accounts/consumer_dashboard.html', {'issues': issues})
