@@ -21,6 +21,28 @@ def signup_view(request):
 
 @login_required
 def dashboard(request):
-    issues = Issue.objects.filter(reported_by=request.user).order_by('-created_at')
+    if request.user.role == 'provider':
+        
+        issues = Issue.objects.filter(assigned_to__isnull=True).order_by('-created_at')
+    else:
+       
+        issues = Issue.objects.filter(reported_by=request.user).order_by('-created_at')
+    
     return render(request, 'accounts/dashboard.html', {'issues': issues})
+  
+@login_required
+def role_based_redirect(request):
+    if request.user.role == 'provider':
+        return redirect('accounts:provider_dashboard')
+    else:
+        return redirect('accounts:consumer_dashboard')
+
+
+@login_required
+def provider_dashboard(request):
+    return render(request, 'accounts/provider_dashboard.html')
+
+@login_required
+def consumer_dashboard(request):
+    return render(request, 'accounts/consumer_dashboard.html')
 

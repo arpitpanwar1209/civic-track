@@ -2,14 +2,16 @@
 
 {% block content %}
 <div class="max-w-md mx-auto mt-12 p-6 bg-white shadow-md rounded">
-  <h2 class="text-2xl font-bold mb-6 text-center">Login</h2>
-  <form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded mt-4">
-      Login
-    </button>
-  </form>
+  <h2 class="text-xl font-bold mb-4">Login</h2>
+<form method="post" action="{% url 'login' %}">
+  {% csrf_token %}
+  <label for="username">Username:</label>
+  <input type="text" name="username"><br>
+  <label for="password">Password:</label>
+  <input type="password" name="password"><br>
+  <button type="submit">Login</button>
+</form>
+
   <p class="mt-4 text-center">
     Don't have an account? <a href="{% url 'accounts:signup' %}" class="text-blue-600 underline">Sign up</a>
   </p>

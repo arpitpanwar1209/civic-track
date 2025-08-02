@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2 class="text-xl font-bold">Flag Issue</h2>
+  <form method="post">
+    {% csrf_token %}
+    <textarea name="flag_reason" placeholder="Reason for flagging" class="w-full p-2 border"></textarea>
+    <button type="submit" class="mt-2 bg-red-600 text-white px-4 py-2 rounded">Flag</button>
+  </form>
+{% endblock %}

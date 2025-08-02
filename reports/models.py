@@ -66,6 +66,9 @@ class Issue(models.Model):
 
     feedback = models.TextField(blank=True, null=True)
 
+    is_flagged = models.BooleanField(default=False)
+    flag_reason = models.TextField(blank=True, null=True)
+
     def __str__(self):
         return f"{self.title} ({self.status})"
 
