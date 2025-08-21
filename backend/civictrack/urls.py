@@ -2,18 +2,24 @@ from django.contrib import admin
 from django.urls import path, include
 from civiltrack.views import home
 from rest_framework.routers import DefaultRouter
-from reports.views import IssueViewSet, FlagReportViewSet  # ✅ new imports
+from reports.views import IssueViewSet, FlagReportViewSet
 
-# DRF Router
 router = DefaultRouter()
-router.register(r'issues', IssueViewSet)       # /api/issues/
-router.register(r'flags', FlagReportViewSet)   # /api/flags/
+router.register(r'issues', IssueViewSet)
+router.register(r'flags', FlagReportViewSet)
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('', home, name='home'),
-    path('', include('civiltrack.urls')),
-    path('accounts/', include('accounts.urls')),
-    path('issues/', include('reports.urls')),   # regular Django views
-    path('api/', include(router.urls)),         # DRF API endpoints
+    path("admin/", admin.site.urls),
+
+    # Root API check
+    path("", home, name="home"),
+
+    # Accounts (signup/login/profile)
+    path("accounts/", include("accounts.urls")),
+
+    # Issues app
+    path("issues/", include("reports.urls")),
+
+    # API endpoints
+    path("api/", include(router.urls)),
 ]
