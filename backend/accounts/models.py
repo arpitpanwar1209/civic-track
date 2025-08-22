@@ -8,4 +8,9 @@ class CustomUser(AbstractUser):
         ('provider', 'Provider'),
         ('consumer', 'Consumer'),
     )
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='consumer')
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="consumer")
+    contact = models.CharField(max_length=20, blank=True, null=True)
+    profile_pic = models.ImageField(upload_to="profile_pics/", blank=True, null=True)
+
+    def __str__(self):
+        return self.username

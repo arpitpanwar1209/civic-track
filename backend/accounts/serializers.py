@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from .models import CustomUser
 
 User = get_user_model()
 
@@ -24,5 +25,14 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
-        model = User
-        fields = ("id", "username", "email", "role")
+        model = CustomUser
+        fields = ["id", "username", "email", "contact", "profile_pic", "role"]
+        read_only_fields = ["id", "role"]
+
+
+# ✅ New serializer for profile update
+class UserProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ["id", "username", "email", "first_name", "last_name", "contact", "profile_pic"]
+        read_only_fields = ["id", "email"]  # keep email fixed

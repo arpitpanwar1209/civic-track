@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -33,45 +34,56 @@ class Issue(models.Model):
         ('urgent', 'Urgent'),
     ]
 
+    # ---------- Core Fields ----------
     title = models.CharField(max_length=255)
     description = models.TextField()
     category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
 
-    # Location data
+    # ---------- Location ----------
     location = models.CharField(max_length=255, blank=True, null=True)
     latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
 
-    # Photos (main + multiple extras)
+    # ---------- Photo ----------
     photo = models.ImageField(upload_to="issue_photos/", blank=True, null=True)
 
+    # ---------- Status & Priority ----------
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default="medium")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
 
-    # Assignments
+    # ---------- Assignments ----------
     assigned_to = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="assigned_issues",
-        limit_choices_to={'role': 'provider'}
+        limit_choices_to={'role': 'provider'},
+        help_text="Which provider/authority is responsible"
     )
 
     reported_by = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="issues"
     )
 
+    # ---------- Timestamps ----------
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    # Flags & moderation
+    # ---------- Moderation ----------
     is_anonymous = models.BooleanField(default=False)
     feedback = models.TextField(blank=True, null=True)
     is_flagged = models.BooleanField(default=False)
     flag_reason = models.TextField(blank=True, null=True)
+
+    # ---------- Likes ----------
+    likes = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name="liked_issues",
+        blank=True
+    )
 
     def __str__(self):
         return f"{self.title} ({self.status})"
@@ -79,11 +91,22 @@ class Issue(models.Model):
     class Meta:
         ordering = ["-created_at"]
 
+    # ✅ Helper methods
+    @property
+    def likes_count(self):
+        """Quickly get number of likes"""
+        return self.likes.count()
+
+    @property
+    def reporter_name(self):
+        """Return username or 'Anonymous' if hidden"""
+        if self.is_anonymous:
+            return "Anonymous"
+        return self.reported_by.username
+
 
 class IssuePhoto(models.Model):
-    """
-    Allows attaching multiple photos (up to 5) per Issue.
-    """
+    """Extra photos for issues (gallery support)"""
     issue = models.ForeignKey(Issue, on_delete=models.CASCADE, related_name="photos")
     image = models.ImageField(upload_to="issue_photos/extra/")
     uploaded_at = models.DateTimeField(auto_now_add=True)

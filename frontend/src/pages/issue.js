@@ -8,7 +8,14 @@ export default function Issue() {
     fetch("http://localhost:8000/api/issues/")
       .then((res) => res.json())
       .then((data) => {
-        setIssues(data);
+        console.log("API Response:", data); // 🔍 Debugging
+        if (Array.isArray(data)) {
+          setIssues(data);
+        } else if (data.results) {
+          setIssues(data.results);
+        } else {
+          setIssues([]);
+        }
         setLoading(false);
       })
       .catch((err) => {
@@ -22,6 +29,8 @@ export default function Issue() {
       <h2>All Issues</h2>
       {loading ? (
         <p>Loading...</p>
+      ) : issues.length === 0 ? (
+        <p>No issues found.</p>
       ) : (
         <ul>
           {issues.map((issue) => (
