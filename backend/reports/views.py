@@ -1,3 +1,4 @@
+# reports/views.py
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
@@ -7,23 +8,78 @@ from rest_framework.response import Response
 from .models import Issue, FlagReport
 from .forms import IssueForm
 from .serializers import IssueSerializer, FlagReportSerializer
+import math
+
+
+# ---------------------------
+# Helper for haversine distance
+# ---------------------------
+def haversine(lat1, lon1, lat2, lon2):
+    """
+    Return distance in kilometers between two (lat, lon) points.
+    """
+    R = 6371  # Earth radius in km
+    phi1, phi2 = math.radians(float(lat1)), math.radians(float(lat2))
+    dphi = math.radians(float(lat2) - float(lat1))
+    dlambda = math.radians(float(lon2) - float(lon1))
+
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+    return R * (2 * math.atan2(math.sqrt(a), math.sqrt(1 - a)))
 
 
 # ---------------------------
 # REST API ViewSets (for React)
 # ---------------------------
-
 class IssueViewSet(viewsets.ModelViewSet):
     queryset = Issue.objects.all()
     serializer_class = IssueSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        """Consumers see their own issues, providers/admins see all."""
+        """
+        Consumers see their own issues,
+        providers/admins see all.
+        Supports ?nearby=lat,lon&radius_km=10
+        """
         user = self.request.user
+        qs = Issue.objects.all()
+
         if hasattr(user, "role") and user.role == "consumer":
-            return Issue.objects.filter(reported_by=user)
-        return Issue.objects.all()
+            qs = qs.filter(reported_by=user)
+
+        # ✅ Nearby filtering
+        nearby = self.request.query_params.get("nearby")
+        radius_km = self.request.query_params.get("radius_km")
+
+        if nearby:
+            try:
+                lat_str, lon_str = nearby.split(",")
+                lat, lon = float(lat_str), float(lon_str)
+
+                issues_with_distance = []
+                for issue in qs:
+                    if issue.latitude is not None and issue.longitude is not None:
+                        dist = haversine(lat, lon, issue.latitude, issue.longitude)
+                        issues_with_distance.append((dist, issue))
+
+                # Filter by radius if provided
+                if radius_km:
+                    r = float(radius_km)
+                    issues_with_distance = [(d, i) for d, i in issues_with_distance if d <= r]
+
+                # Sort by distance
+                issues_with_distance.sort(key=lambda x: x[0])
+
+                # Attach temporary field `_distance` so serializer can pick it up
+                for d, issue in issues_with_distance:
+                    issue._distance = d
+
+                return [i for _, i in issues_with_distance]
+
+            except Exception as e:
+                print("Nearby query error:", e)
+
+        return qs
 
     def perform_create(self, serializer):
         """Automatically attach logged-in user when creating issue."""

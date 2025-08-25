@@ -85,6 +85,10 @@ class Issue(models.Model):
         blank=True
     )
 
+    # ---------- Runtime Field (not stored in DB) ----------
+    # This is injected by views when doing nearby search
+    _distance = None
+
     def __str__(self):
         return f"{self.title} ({self.status})"
 
@@ -94,19 +98,24 @@ class Issue(models.Model):
     # ✅ Helper methods
     @property
     def likes_count(self):
-        """Quickly get number of likes"""
         return self.likes.count()
 
     @property
     def reporter_name(self):
-        """Return username or 'Anonymous' if hidden"""
         if self.is_anonymous:
             return "Anonymous"
         return self.reported_by.username
 
+    @property
+    def distance_km(self):
+        """
+        Return computed distance in km (if available).
+        This is set dynamically by views when using ?nearby.
+        """
+        return round(self._distance, 2) if self._distance is not None else None
+
 
 class IssuePhoto(models.Model):
-    """Extra photos for issues (gallery support)"""
     issue = models.ForeignKey(Issue, on_delete=models.CASCADE, related_name="photos")
     image = models.ImageField(upload_to="issue_photos/extra/")
     uploaded_at = models.DateTimeField(auto_now_add=True)

@@ -1,163 +1,229 @@
+// frontend/src/pages/EditIssue.js
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+
+// Fix leaflet marker icons
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: require("leaflet/dist/images/marker-icon-2x.png"),
+  iconUrl: require("leaflet/dist/images/marker-icon.png"),
+  shadowUrl: require("leaflet/dist/images/marker-shadow.png"),
+});
 
 export default function EditIssue() {
-  const { id } = useParams(); // issue id from URL
+  const { id } = useParams();
   const navigate = useNavigate();
-  const [issue, setIssue] = useState(null);
-  const [msg, setMsg] = useState("");
-  const [saving, setSaving] = useState(false);
-
   const token = localStorage.getItem("access");
-  const API = `http://127.0.0.1:8000/api/issues/${id}/`;
 
+  const [issue, setIssue] = useState(null);
+  const [formData, setFormData] = useState({});
+  const [photo, setPhoto] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [message, setMessage] = useState({ type: "", text: "" }); // ✅ notification state
+  const [loading, setLoading] = useState(false);
+
+  // ✅ Fetch issue details from API
   useEffect(() => {
-    fetch(API, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`http://127.0.0.1:8000/api/issues/${id}/`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then((res) => res.json())
-      .then((data) => setIssue(data))
-      .catch((err) => {
-        console.error(err);
-        setMsg("⚠️ Could not load issue");
-      });
-  }, [API, token]);
+      .then((data) => {
+        setIssue(data);
+        setFormData({
+          title: data.title || "",
+          description: data.description || "",
+          category: data.category || "",
+          priority: data.priority || "Medium",
+          location: data.location || "",
+          latitude: data.latitude,
+          longitude: data.longitude,
+        });
+      })
+      .catch((err) => console.error("Error loading issue:", err));
+  }, [id, token]);
 
-  const onChange = (e) => {
-    const { name, value } = e.target;
-    setIssue((p) => ({ ...p, [name]: value }));
-  };
+  // ✅ Draggable marker on map
+  function DraggableMarker() {
+    const [position, setPosition] = useState([formData.latitude, formData.longitude]);
+    useMapEvents({
+      click(e) {
+        setPosition([e.latlng.lat, e.latlng.lng]);
+        setFormData({ ...formData, latitude: e.latlng.lat, longitude: e.latlng.lng });
+      },
+    });
 
-  const onFile = (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setIssue((p) => ({ ...p, _file: f }));
-  };
+    return (
+      <Marker
+        draggable
+        eventHandlers={{
+          dragend(e) {
+            const latlng = e.target.getLatLng();
+            setFormData({ ...formData, latitude: latlng.lat, longitude: latlng.lng });
+          },
+        }}
+        position={position}
+      >
+        <Popup>Drag me or click map to update location</Popup>
+      </Marker>
+    );
+  }
 
-  const save = async (e) => {
+  // ✅ Search location with OpenStreetMap Nominatim API
+  const handleSearch = async (e) => {
     e.preventDefault();
-    setSaving(true);
-    setMsg("");
+    if (!searchQuery) return;
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`
+    );
+    const data = await res.json();
+    setSearchResults(data);
+  };
 
-    try {
-      const form = new FormData();
-      form.append("title", issue.title);
-      form.append("description", issue.description);
-      form.append("priority", issue.priority);
-      form.append("category", issue.category);
-      if (issue.location) form.append("location", issue.location);
-      if (issue._file) form.append("photo", issue._file);
+  const handleSelectLocation = (place) => {
+    setFormData({
+      ...formData,
+      location: place.display_name,
+      latitude: parseFloat(place.lat),
+      longitude: parseFloat(place.lon),
+    });
+    setSearchResults([]);
+  };
 
-      const res = await fetch(API, {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${token}` },
-        body: form,
-      });
+  // ✅ Save updated issue
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage({ type: "", text: "" });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        console.error(err);
-        setMsg("❌ Update failed");
-      } else {
-        setMsg("✅ Issue updated");
-        setTimeout(() => navigate("/dashboard"), 1200);
-      }
-    } catch (err) {
-      console.error(err);
-      setMsg("⚠️ Network error");
-    } finally {
-      setSaving(false);
+    const body = new FormData();
+    Object.keys(formData).forEach((key) => body.append(key, formData[key]));
+    if (photo) body.append("photo", photo);
+
+    const res = await fetch(`http://127.0.0.1:8000/api/issues/${id}/`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}` },
+      body,
+    });
+
+    setLoading(false);
+
+    if (res.ok) {
+      setMessage({ type: "success", text: "✅ Issue updated successfully!" });
+
+      // redirect after short delay
+      setTimeout(() => navigate("/dashboard"), 1500);
+    } else {
+      const error = await res.json();
+      setMessage({ type: "error", text: `❌ Failed: ${error.detail || "Something went wrong"}` });
     }
   };
 
   if (!issue) return <p>Loading issue...</p>;
 
   return (
-    <div style={{ maxWidth: 600, margin: "20px auto" }}>
-      <h2>Edit Issue</h2>
-      {msg && <p>{msg}</p>}
-      <form onSubmit={save} encType="multipart/form-data">
+    <div style={{ maxWidth: "800px", margin: "0 auto", padding: "20px" }}>
+      <h2>✏️ Edit Issue</h2>
+
+      {/* ✅ Notification Box */}
+      {message.text && (
+        <div
+          style={{
+            padding: "10px",
+            marginBottom: "15px",
+            borderRadius: "5px",
+            background: message.type === "success" ? "#d4edda" : "#f8d7da",
+            color: message.type === "success" ? "#155724" : "#721c24",
+            border: `1px solid ${message.type === "success" ? "#c3e6cb" : "#f5c6cb"}`,
+          }}
+        >
+          {message.text}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit}>
+        <label>Title</label>
         <input
           type="text"
-          name="title"
-          value={issue.title}
-          onChange={onChange}
+          value={formData.title}
+          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
           required
-          placeholder="Title"
-          style={{ display: "block", margin: "10px 0", width: "100%" }}
         />
 
+        <label>Description</label>
         <textarea
-          name="description"
-          value={issue.description}
-          onChange={onChange}
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           required
-          placeholder="Description"
-          style={{ display: "block", margin: "10px 0", width: "100%" }}
         />
 
-        <label>Category:</label>
-        <select
-          name="category"
-          value={issue.category}
-          onChange={onChange}
-          style={{ display: "block", margin: "10px 0" }}
-        >
-          <option value="road">Road</option>
-          <option value="garbage">Garbage</option>
-          <option value="water">Water Supply</option>
-          <option value="electricity">Electricity</option>
-          <option value="sewage">Sewage</option>
-          <option value="lighting">Street Lighting</option>
-          <option value="pollution">Pollution</option>
-          <option value="traffic">Traffic</option>
-          <option value="other">Other</option>
-        </select>
-
-        <label>Priority:</label>
-        <select
-          name="priority"
-          value={issue.priority}
-          onChange={onChange}
-          style={{ display: "block", margin: "10px 0" }}
-        >
-          <option value="low">Low</option>
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
-          <option value="urgent">Urgent</option>
-        </select>
-
+        <label>Category</label>
         <input
           type="text"
-          name="location"
-          value={issue.location || ""}
-          onChange={onChange}
-          placeholder="Location (optional)"
-          style={{ display: "block", margin: "10px 0", width: "100%" }}
+          value={formData.category}
+          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
         />
 
-        <label>Photo:</label>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={onFile}
-          style={{ display: "block", margin: "10px 0" }}
-        />
+        <label>Priority</label>
+        <select
+          value={formData.priority}
+          onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+        >
+          <option>Low</option>
+          <option>Medium</option>
+          <option>High</option>
+        </select>
 
-        {issue.photo && (
-          <div>
-            <img
-              src={
-                issue.photo.startsWith("http")
-                  ? issue.photo
-                  : `http://127.0.0.1:8000${issue.photo}`
-              }
-              alt="Issue"
-              width={200}
-            />
-          </div>
+        <label>Upload New Photo</label>
+        <input type="file" onChange={(e) => setPhoto(e.target.files[0])} />
+
+        {/* ✅ Search box */}
+        <form onSubmit={handleSearch} style={{ margin: "15px 0" }}>
+          <input
+            type="text"
+            value={searchQuery}
+            placeholder="Search location..."
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <button type="submit">Search</button>
+        </form>
+
+        {searchResults.length > 0 && (
+          <ul style={{ border: "1px solid #ddd", padding: "10px" }}>
+            {searchResults.map((place) => (
+              <li
+                key={place.place_id}
+                onClick={() => handleSelectLocation(place)}
+                style={{ cursor: "pointer", padding: "5px" }}
+              >
+                {place.display_name}
+              </li>
+            ))}
+          </ul>
         )}
 
-        <button type="submit" disabled={saving}>
-          {saving ? "Saving..." : "Save"}
+        {/* ✅ Map */}
+        <div style={{ height: "400px", marginTop: "15px" }}>
+          <MapContainer
+            center={[formData.latitude, formData.longitude]}
+            zoom={15}
+            style={{ height: "100%", width: "100%" }}
+          >
+            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <DraggableMarker />
+          </MapContainer>
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          style={{ marginTop: "15px", padding: "10px 20px" }}
+        >
+          {loading ? "Saving..." : "💾 Save Changes"}
         </button>
       </form>
     </div>

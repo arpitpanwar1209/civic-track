@@ -1,6 +1,8 @@
+// frontend/src/pages/dashboard.js
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import SubmitIssue from "./submitissue";
+import IssueMap from "../components/issuemap";
 
 export default function Dashboard() {
   const [issues, setIssues] = useState([]);
@@ -49,7 +51,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div style={{ padding: "20px", maxWidth: "900px", margin: "0 auto" }}>
+    <div style={{ padding: "20px", maxWidth: "1100px", margin: "0 auto" }}>
       {/* Profile Button */}
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <Link
@@ -73,6 +75,12 @@ export default function Dashboard() {
       <div style={{ marginBottom: "30px" }}>
         <h2>➕ Submit a New Issue</h2>
         <SubmitIssue />
+      </div>
+
+      {/* Map Section */}
+      <div style={{ marginBottom: "30px" }}>
+        <h2>🗺️ Issues on Map</h2>
+        <IssueMap issues={issues} />
       </div>
 
       {/* Issues List */}
@@ -157,7 +165,7 @@ export default function Dashboard() {
                   👍 Like
                 </button>
                 <Link
-                  to={`/edit-issue/${issue.id}`}
+                  to={`/issues/${issue.id}/edit`}   
                   style={{
                     padding: "6px 12px",
                     marginRight: "8px",
