@@ -1,5 +1,15 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
+import {
+  Container,
+  Row,
+  Col,
+  Card,
+  Form,
+  Button,
+  Alert,
+  Spinner,
+} from "react-bootstrap";
 
 function Login() {
   const [formData, setFormData] = useState({
@@ -8,6 +18,7 @@ function Login() {
   });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -18,6 +29,7 @@ function Login() {
     e.preventDefault();
     setError("");
     setSuccess("");
+    setSubmitting(true);
 
     try {
       const res = await fetch("http://127.0.0.1:8000/accounts/login/", {
@@ -37,44 +49,81 @@ function Login() {
         setSuccess("✅ Login successful! Redirecting...");
         setTimeout(() => navigate("/dashboard"), 1500);
       } else {
-        setError(data.detail || "Invalid credentials");
+        setError(data.detail || "Invalid username or password.");
       }
     } catch (err) {
-      setError("Something went wrong");
+      setError("Something went wrong. Please check your connection and try again.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2>Login</h2>
+    <Container className="d-flex align-items-center justify-content-center" style={{ minHeight: "80vh" }}>
+      <Row className="w-100">
+        <Col md={6} lg={5} xl={4} className="mx-auto">
+          <Card className="shadow-sm">
+            <Card.Body className="p-4 p-md-5">
+              <h2 className="text-center fw-bold mb-4">Welcome Back</h2>
 
-      {success && (
-        <p style={{ color: "green", fontWeight: "bold" }}>{success}</p>
-      )}
-      {error && (
-        <p style={{ color: "red", fontWeight: "bold" }}>{error}</p>
-      )}
+              {success && <Alert variant="success">{success}</Alert>}
+              {error && <Alert variant="danger">{error}</Alert>}
 
-      <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          name="username"
-          placeholder="Username"
-          value={formData.username}
-          onChange={handleChange}
-          required
-        /><br /><br />
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          value={formData.password}
-          onChange={handleChange}
-          required
-        /><br /><br />
-        <button type="submit">Login</button>
-      </form>
-    </div>
+              <Form onSubmit={handleSubmit}>
+                <Form.Group className="mb-3" controlId="formUsername">
+                  <Form.Label>Username</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="username"
+                    placeholder="Enter your username"
+                    value={formData.username}
+                    onChange={handleChange}
+                    required
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-4" controlId="formPassword">
+                  <Form.Label>Password</Form.Label>
+                  <Form.Control
+                    type="password"
+                    name="password"
+                    placeholder="Enter your password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    required
+                  />
+                </Form.Group>
+
+                <div className="d-grid">
+                  <Button variant="primary" type="submit" disabled={submitting}>
+                    {submitting ? (
+                      <>
+                        <Spinner
+                          as="span"
+                          animation="border"
+                          size="sm"
+                          role="status"
+                          aria-hidden="true"
+                          className="me-2"
+                        />
+                        Logging In...
+                      </>
+                    ) : (
+                      "Log In"
+                    )}
+                  </Button>
+                </div>
+              </Form>
+              <div className="text-center mt-3">
+                <small>
+                  Don't have an account? <Link to="/signup">Sign Up</Link>
+                </small>
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+    </Container>
   );
 }
 

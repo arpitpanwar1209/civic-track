@@ -16,7 +16,7 @@ L.Icon.Default.mergeOptions({
     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
 });
 
-// Coordinate validator
+// Validate coordinates
 const isValidCoord = (lat, lon) =>
   typeof lat === "number" &&
   typeof lon === "number" &&
@@ -28,7 +28,7 @@ const isValidCoord = (lat, lon) =>
   lon <= 180;
 
 export default function IssueMap({ issues = [], handleLike, handleDelete }) {
-  // Pick first valid issue for centering
+  // Pick first valid issue for centering, else fallback handled in SafeMap
   const firstValid = issues.find((i) => isValidCoord(i.latitude, i.longitude));
   const centerLat = firstValid?.latitude ?? null;
   const centerLon = firstValid?.longitude ?? null;
@@ -47,8 +47,20 @@ export default function IssueMap({ issues = [], handleLike, handleDelete }) {
             position={[issue.latitude, issue.longitude]}
           >
             <Popup minWidth={260}>
-              <div style={{ fontSize: "0.95em" }}>
-                <h3 style={{ margin: "0 0 8px", fontSize: "1.1em" }}>
+              <div
+                style={{
+                  fontSize: "0.95em",
+                  lineHeight: "1.4",
+                  maxWidth: "250px",
+                }}
+              >
+                <h3
+                  style={{
+                    margin: "0 0 8px",
+                    fontSize: "1.1em",
+                    fontWeight: "600",
+                  }}
+                >
                   {issue.title}
                 </h3>
 
@@ -60,24 +72,41 @@ export default function IssueMap({ issues = [], handleLike, handleDelete }) {
                   <strong>Status:</strong> {issue.status}
                 </p>
 
-                {/* Photo preview */}
-                {issue.photo && (
-                  <img
-                    src={
-                      issue.photo.startsWith("http")
-                        ? issue.photo
-                        : `http://127.0.0.1:8000${issue.photo}`
-                    }
-                    alt="Issue"
-                    style={{
-                      width: "100%",
-                      maxHeight: "120px",
-                      objectFit: "cover",
-                      borderRadius: "6px",
-                      marginBottom: "8px",
-                    }}
-                  />
-                )}
+                {/* Photo preview with fallback */}
+                <div style={{ margin: "8px 0" }}>
+                  {issue.photo ? (
+                    <img
+                      src={
+                        issue.photo.startsWith("http")
+                          ? issue.photo
+                          : `http://127.0.0.1:8000${issue.photo}`
+                      }
+                      alt="Issue"
+                      style={{
+                        width: "100%",
+                        maxHeight: "120px",
+                        objectFit: "cover",
+                        borderRadius: "6px",
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: "100%",
+                        height: "80px",
+                        borderRadius: "6px",
+                        background: "#f2f2f2",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "0.85em",
+                        color: "#666",
+                      }}
+                    >
+                      No Image
+                    </div>
+                  )}
+                </div>
 
                 {/* Likes */}
                 <p style={{ fontSize: "0.85em", margin: "5px 0" }}>
@@ -85,7 +114,14 @@ export default function IssueMap({ issues = [], handleLike, handleDelete }) {
                 </p>
 
                 {/* Action buttons */}
-                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "6px",
+                    flexWrap: "wrap",
+                    marginTop: "6px",
+                  }}
+                >
                   {handleLike && (
                     <button
                       onClick={() => handleLike(issue.id)}
@@ -96,6 +132,7 @@ export default function IssueMap({ issues = [], handleLike, handleDelete }) {
                         background: "#2ecc71",
                         color: "white",
                         cursor: "pointer",
+                        fontSize: "0.85em",
                       }}
                     >
                       👍 Like
@@ -110,6 +147,7 @@ export default function IssueMap({ issues = [], handleLike, handleDelete }) {
                       background: "#f39c12",
                       color: "white",
                       textDecoration: "none",
+                      fontSize: "0.85em",
                     }}
                   >
                     ✏️ Edit
@@ -125,6 +163,7 @@ export default function IssueMap({ issues = [], handleLike, handleDelete }) {
                         background: "#e74c3c",
                         color: "white",
                         cursor: "pointer",
+                        fontSize: "0.85em",
                       }}
                     >
                       🗑 Delete

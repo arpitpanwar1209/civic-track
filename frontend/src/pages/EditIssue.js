@@ -1,9 +1,22 @@
 // frontend/src/pages/EditIssue.js
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import {
+  Container,
+  Row,
+  Col,
+  Card,
+  Form,
+  Button,
+  Alert,
+  Spinner,
+  InputGroup,
+  ListGroup,
+} from "react-bootstrap";
+import { FaArrowLeft } from "react-icons/fa";
 
 // Fix leaflet marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -18,44 +31,62 @@ export default function EditIssue() {
   const navigate = useNavigate();
   const token = localStorage.getItem("access");
 
-  const [issue, setIssue] = useState(null);
-  const [formData, setFormData] = useState({});
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    category: "",
+    priority: "Medium",
+    latitude: 0,
+    longitude: 0,
+  });
   const [photo, setPhoto] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
-  const [message, setMessage] = useState({ type: "", text: "" }); // ✅ notification state
-  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState({ type: "", text: "" });
+  const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // ✅ Fetch issue details from API
+  // Fetch issue details
   useEffect(() => {
     fetch(`http://127.0.0.1:8000/api/issues/${id}/`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("Could not load issue data.");
+        return res.json();
+      })
       .then((data) => {
-        setIssue(data);
         setFormData({
           title: data.title || "",
           description: data.description || "",
           category: data.category || "",
           priority: data.priority || "Medium",
-          location: data.location || "",
-          latitude: data.latitude,
-          longitude: data.longitude,
+          latitude: data.latitude || 0,
+          longitude: data.longitude || 0,
         });
       })
-      .catch((err) => console.error("Error loading issue:", err));
+      .catch((err) => {
+        setMessage({ type: "danger", text: err.message });
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [id, token]);
 
-  // ✅ Draggable marker on map
+  // Draggable marker on map
   function DraggableMarker() {
-    const [position, setPosition] = useState([formData.latitude, formData.longitude]);
-    useMapEvents({
+    const map = useMapEvents({
       click(e) {
-        setPosition([e.latlng.lat, e.latlng.lng]);
         setFormData({ ...formData, latitude: e.latlng.lat, longitude: e.latlng.lng });
       },
     });
+
+    useEffect(() => {
+        // Fly to the new coordinates when they change
+        if (formData.latitude && formData.longitude) {
+            map.flyTo([formData.latitude, formData.longitude], map.getZoom());
+        }
+    }, [formData.latitude, formData.longitude, map]);
 
     return (
       <Marker
@@ -66,14 +97,14 @@ export default function EditIssue() {
             setFormData({ ...formData, latitude: latlng.lat, longitude: latlng.lng });
           },
         }}
-        position={position}
+        position={[formData.latitude, formData.longitude]}
       >
         <Popup>Drag me or click map to update location</Popup>
       </Marker>
     );
   }
 
-  // ✅ Search location with OpenStreetMap Nominatim API
+  // Search location with OpenStreetMap
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!searchQuery) return;
@@ -87,145 +118,163 @@ export default function EditIssue() {
   const handleSelectLocation = (place) => {
     setFormData({
       ...formData,
-      location: place.display_name,
       latitude: parseFloat(place.lat),
       longitude: parseFloat(place.lon),
     });
+    setSearchQuery(place.display_name);
     setSearchResults([]);
   };
 
-  // ✅ Save updated issue
+  // Save updated issue
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    setSubmitting(true);
     setMessage({ type: "", text: "" });
 
     const body = new FormData();
-    Object.keys(formData).forEach((key) => body.append(key, formData[key]));
+    // Use PATCH to only send updated fields
+    body.append("title", formData.title);
+    body.append("description", formData.description);
+    body.append("category", formData.category);
+    body.append("priority", formData.priority);
+    body.append("latitude", formData.latitude);
+    body.append("longitude", formData.longitude);
     if (photo) body.append("photo", photo);
 
-    const res = await fetch(`http://127.0.0.1:8000/api/issues/${id}/`, {
-      method: "PUT",
-      headers: { Authorization: `Bearer ${token}` },
-      body,
-    });
+    try {
+        const res = await fetch(`http://127.0.0.1:8000/api/issues/${id}/`, {
+            method: "PATCH",
+            headers: { Authorization: `Bearer ${token}` },
+            body,
+        });
 
-    setLoading(false);
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.detail || "Something went wrong");
+        }
+        
+        setMessage({ type: "success", text: "✅ Issue updated successfully!" });
+        setTimeout(() => navigate("/dashboard"), 1500);
 
-    if (res.ok) {
-      setMessage({ type: "success", text: "✅ Issue updated successfully!" });
-
-      // redirect after short delay
-      setTimeout(() => navigate("/dashboard"), 1500);
-    } else {
-      const error = await res.json();
-      setMessage({ type: "error", text: `❌ Failed: ${error.detail || "Something went wrong"}` });
+    } catch (err) {
+        setMessage({ type: "danger", text: `❌ Failed: ${err.message}` });
+    } finally {
+        setSubmitting(false);
     }
   };
 
-  if (!issue) return <p>Loading issue...</p>;
+  if (loading) {
+    return (
+      <Container className="text-center py-5">
+        <Spinner animation="border" />
+        <p className="mt-2">Loading issue details...</p>
+      </Container>
+    );
+  }
 
   return (
-    <div style={{ maxWidth: "800px", margin: "0 auto", padding: "20px" }}>
-      <h2>✏️ Edit Issue</h2>
+    <Container className="my-4">
+        <Card className="shadow-sm">
+            <Card.Header as="h2" className="d-flex justify-content-between align-items-center">
+                ✏️ Edit Issue
+                <Button as={Link} to="/dashboard" variant="outline-secondary" size="sm">
+                    <FaArrowLeft className="me-2" /> Back to Dashboard
+                </Button>
+            </Card.Header>
+            <Card.Body className="p-4">
+                {message.text && (
+                    <Alert variant={message.type} onClose={() => setMessage({ type: '', text: '' })} dismissible>
+                        {message.text}
+                    </Alert>
+                )}
 
-      {/* ✅ Notification Box */}
-      {message.text && (
-        <div
-          style={{
-            padding: "10px",
-            marginBottom: "15px",
-            borderRadius: "5px",
-            background: message.type === "success" ? "#d4edda" : "#f8d7da",
-            color: message.type === "success" ? "#155724" : "#721c24",
-            border: `1px solid ${message.type === "success" ? "#c3e6cb" : "#f5c6cb"}`,
-          }}
-        >
-          {message.text}
-        </div>
-      )}
+                <Form onSubmit={handleSubmit}>
+                    <Row>
+                        <Form.Group as={Col} md="8" className="mb-3" controlId="formTitle">
+                            <Form.Label>Title</Form.Label>
+                            <Form.Control
+                                type="text"
+                                value={formData.title}
+                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                required
+                            />
+                        </Form.Group>
+                        <Form.Group as={Col} md="4" className="mb-3" controlId="formPriority">
+                            <Form.Label>Priority</Form.Label>
+                            <Form.Select value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })}>
+                                <option>Low</option>
+                                <option>Medium</option>
+                                <option>High</option>
+                            </Form.Select>
+                        </Form.Group>
+                    </Row>
+                    
+                    <Form.Group className="mb-3" controlId="formDescription">
+                        <Form.Label>Description</Form.Label>
+                        <Form.Control
+                            as="textarea" rows={4}
+                            value={formData.description}
+                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            required
+                        />
+                    </Form.Group>
 
-      <form onSubmit={handleSubmit}>
-        <label>Title</label>
-        <input
-          type="text"
-          value={formData.title}
-          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-          required
-        />
+                    <Row>
+                        <Form.Group as={Col} md="6" className="mb-3" controlId="formCategory">
+                            <Form.Label>Category</Form.Label>
+                            <Form.Control
+                                type="text"
+                                value={formData.category}
+                                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                            />
+                        </Form.Group>
+                        <Form.Group as={Col} md="6" className="mb-3" controlId="formPhoto">
+                            <Form.Label>Upload New Photo</Form.Label>
+                            <Form.Control type="file" onChange={(e) => setPhoto(e.target.files[0])} />
+                        </Form.Group>
+                    </Row>
 
-        <label>Description</label>
-        <textarea
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          required
-        />
+                    <Form.Group className="mb-3" controlId="formSearch">
+                        <Form.Label>Search Location</Form.Label>
+                        <InputGroup>
+                            <Form.Control
+                                type="text"
+                                value={searchQuery}
+                                placeholder="Search for a city or address..."
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                            <Button variant="outline-secondary" onClick={handleSearch}>Search</Button>
+                        </InputGroup>
+                    </Form.Group>
+                    
+                    {searchResults.length > 0 && (
+                        <ListGroup className="mb-3">
+                            {searchResults.map((place) => (
+                                <ListGroup.Item action key={place.place_id} onClick={() => handleSelectLocation(place)}>
+                                    {place.display_name}
+                                </ListGroup.Item>
+                            ))}
+                        </ListGroup>
+                    )}
 
-        <label>Category</label>
-        <input
-          type="text"
-          value={formData.category}
-          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-        />
+                    <div style={{ height: "400px", width: "100%" }} className="mb-3">
+                        <MapContainer center={[formData.latitude, formData.longitude]} zoom={15} style={{ height: "100%", width: "100%" }}>
+                            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                            <DraggableMarker />
+                        </MapContainer>
+                    </div>
 
-        <label>Priority</label>
-        <select
-          value={formData.priority}
-          onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-        >
-          <option>Low</option>
-          <option>Medium</option>
-          <option>High</option>
-        </select>
-
-        <label>Upload New Photo</label>
-        <input type="file" onChange={(e) => setPhoto(e.target.files[0])} />
-
-        {/* ✅ Search box */}
-        <form onSubmit={handleSearch} style={{ margin: "15px 0" }}>
-          <input
-            type="text"
-            value={searchQuery}
-            placeholder="Search location..."
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <button type="submit">Search</button>
-        </form>
-
-        {searchResults.length > 0 && (
-          <ul style={{ border: "1px solid #ddd", padding: "10px" }}>
-            {searchResults.map((place) => (
-              <li
-                key={place.place_id}
-                onClick={() => handleSelectLocation(place)}
-                style={{ cursor: "pointer", padding: "5px" }}
-              >
-                {place.display_name}
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {/* ✅ Map */}
-        <div style={{ height: "400px", marginTop: "15px" }}>
-          <MapContainer
-            center={[formData.latitude, formData.longitude]}
-            zoom={15}
-            style={{ height: "100%", width: "100%" }}
-          >
-            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            <DraggableMarker />
-          </MapContainer>
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          style={{ marginTop: "15px", padding: "10px 20px" }}
-        >
-          {loading ? "Saving..." : "💾 Save Changes"}
-        </button>
-      </form>
-    </div>
+                    <Button variant="primary" type="submit" disabled={submitting}>
+                        {submitting ? (
+                            <>
+                                <Spinner as="span" animation="border" size="sm" className="me-2" />
+                                Saving...
+                            </>
+                        ) : "💾 Save Changes"}
+                    </Button>
+                </Form>
+            </Card.Body>
+        </Card>
+    </Container>
   );
 }

@@ -1,8 +1,16 @@
-from django.urls import path
+from django.urls import path, include
 from django.shortcuts import render   # ✅ import render
 from . import views
+from .ml_api import predict_category 
+from .views import IssueViewSet, FlagReportViewSet
+from rest_framework.routers import DefaultRouter
 
 app_name = 'reports'
+
+
+router = DefaultRouter()
+router.register(r"issues", IssueViewSet)
+router.register(r"flags", FlagReportViewSet)
 
 urlpatterns = [
     path('submit/', views.submit_issue, name='submit_issue'),
@@ -11,4 +19,6 @@ urlpatterns = [
     path('admin/flags/', views.flagged_issues_list, name='flagged_issues_list'),
     path('admin/flags/<int:flag_id>/<str:action>/', views.resolve_flag, name='resolve_flag'),
     path('success/', lambda request: render(request, 'reports/success.html'), name='issue_success'),
+    path("", include(router.urls)),
+    path("predict-category/", predict_category, name="predict-category"), 
 ]

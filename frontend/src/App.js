@@ -11,6 +11,7 @@ import Dashboard from "./pages/dashboard";
 import SubmitIssue from "./pages/submitissue";  
 import Profile from "./pages/profile";
 import EditIssue from "./pages/EditIssue";
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 function App() {
   return (
@@ -26,11 +27,7 @@ function App() {
           <Link to="/profile" style={{ margin: "0 10px", color: "#fff" }}>Profile</Link>
         </nav>
 
-        {/* ✅ App Header */}
-        <header className="App-header" style={{ padding: "20px" }}>
-          <h1>CivicTrack 🏙️</h1>
-          <p>Community Issues Near You</p>
-        </header>
+        
 
         {/* ✅ Routes (single place only) */}
         <main style={{ padding: "20px" }}>

@@ -26,9 +26,12 @@ INSTALLED_APPS = [
 
     # Your apps
     'accounts',
-    'civiltrack',
     'moderation',
     'reports',
+    'ml_api',
+    'ml',
+    
+    
 
     # Third-party
     'rest_framework',
@@ -101,6 +104,7 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
+    "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
     "DEFAULT_PAGINATION_CLASS": None,
 }
 

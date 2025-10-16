@@ -1,13 +1,15 @@
 from django.contrib import admin
 from django.urls import path, include
-from civiltrack.views import home
+from civictrack.views import home
 from rest_framework.routers import DefaultRouter
 from reports.views import IssueViewSet, FlagReportViewSet
+
 from accounts.views import UserProfileUpdateView
 from django.conf import settings
 from django.conf.urls.static import static
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-# DRF Routers for API
+# ✅ DRF Routers for REST API
 router = DefaultRouter()
 router.register(r'issues', IssueViewSet, basename="issue")
 router.register(r'flags', FlagReportViewSet, basename="flag")
@@ -15,23 +17,31 @@ router.register(r'flags', FlagReportViewSet, basename="flag")
 urlpatterns = [
     path("admin/", admin.site.urls),
 
-    # Home (optional landing page)
+    # 🌐 Home page (optional landing page)
     path("", home, name="home"),
 
-    # Accounts (signup/login/profile update)
+    # 👤 Accounts & Profile Management
     path("accounts/", include("accounts.urls")),
     path("api/profile/", UserProfileUpdateView.as_view(), name="profile"),
 
-    # Issues (if you still want Django templates)
-    path("issues/", include("reports.urls")),
 
-    # API endpoints (React will consume these)
+    # 🧾 Main REST API Endpoints (used by React)
     path("api/", include(router.urls)),
 
-    # Auth endpoints (optional DRF login for testing)
+    # 🔑 JWT Authentication
+    path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+
+    # 🧪 DRF Browsable API Auth (optional, for debugging)
     path("api/auth/", include("rest_framework.urls")),
+
+    # 🧱 Reports App (Django templates, optional)
+    path("issues/", include("reports.urls")),
+
+    path("api/ml/", include("ml_api.urls")),
+
 ]
 
-# Media (for profile pictures & issue photos)
+# 🖼️ Media files (user uploads)
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

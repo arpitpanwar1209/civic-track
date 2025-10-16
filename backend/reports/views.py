@@ -34,7 +34,7 @@ class IssueViewSet(viewsets.ModelViewSet):
     queryset = Issue.objects.all()
     serializer_class = IssueSerializer
     permission_classes = [permissions.IsAuthenticated]
-
+   
     def get_queryset(self):
         """
         Consumers see their own issues,

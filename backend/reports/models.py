@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.contrib.auth import get_user_model
 
+
 User = get_user_model()
 
 
@@ -37,7 +38,9 @@ class Issue(models.Model):
     # ---------- Core Fields ----------
     title = models.CharField(max_length=255)
     description = models.TextField()
-    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
+    category = models.CharField(
+        max_length=50, choices=CATEGORY_CHOICES, blank=True, null=True
+    )  # ✅ Made optional for AI prediction
 
     # ---------- Location ----------
     location = models.CharField(max_length=255, blank=True, null=True)
@@ -86,7 +89,6 @@ class Issue(models.Model):
     )
 
     # ---------- Runtime Field (not stored in DB) ----------
-    # This is injected by views when doing nearby search
     _distance = None
 
     def __str__(self):
@@ -102,17 +104,25 @@ class Issue(models.Model):
 
     @property
     def reporter_name(self):
-        if self.is_anonymous:
-            return "Anonymous"
-        return self.reported_by.username
+        return "Anonymous" if self.is_anonymous else self.reported_by.username
 
     @property
     def distance_km(self):
-        """
-        Return computed distance in km (if available).
-        This is set dynamically by views when using ?nearby.
-        """
+        """Return computed distance in km (if available)."""
         return round(self._distance, 2) if self._distance is not None else None
+
+    # ✅ Auto AI Prediction
+    def save(self, *args, **kwargs):
+        """
+        Automatically predict the issue category using ML if it's not provided.
+        """
+        if not self.category and self.description:
+            predicted_category = predict_issue_category(self.description)
+            if predicted_category in dict(self.CATEGORY_CHOICES):
+                self.category = predicted_category
+            else:
+                self.category = "other"
+        super().save(*args, **kwargs)
 
 
 class IssuePhoto(models.Model):

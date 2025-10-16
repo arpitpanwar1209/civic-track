@@ -1,4 +1,17 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  Container,
+  Row,
+  Col,
+  Card,
+  Form,
+  Button,
+  Alert,
+  Spinner,
+  Image,
+} from "react-bootstrap";
+import { FaArrowLeft } from "react-icons/fa";
 
 export default function Profile() {
   const [profile, setProfile] = useState({
@@ -7,20 +20,24 @@ export default function Profile() {
     contact: "",
     profile_pic: null, // URL string from API
   });
-  const [preview, setPreview] = useState(null); // local preview for new file
+  const [newProfilePicFile, setNewProfilePicFile] = useState(null); // Store the File object
+  const [preview, setPreview] = useState(null); // Local preview for new file
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [msg, setMsg] = useState({ type: "", text: "" });
+  const [loading, setLoading] = useState(true);
 
   const token = localStorage.getItem("access");
-  const API = "http://127.0.0.1:8000/api/profile/";
+  // It's best practice to use an environment variable for your API URL
+  const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
   // Load current profile
   useEffect(() => {
-    async function load() {
+    async function loadProfile() {
       try {
-        const res = await fetch(API, {
+        const res = await fetch(`${API_URL}/api/profile/`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        if (!res.ok) throw new Error("Failed to fetch profile.");
         const data = await res.json();
         setProfile({
           username: data.username || "",
@@ -30,40 +47,42 @@ export default function Profile() {
         });
       } catch (e) {
         console.error(e);
-        setMsg("⚠️ Failed to load profile");
+        setMsg({ type: "danger", text: "⚠️ Failed to load profile" });
+      } finally {
+        setLoading(false);
       }
     }
-    load();
-  }, [API, token]);
+    loadProfile();
+  }, [API_URL, token]);
 
   // Handle file choose
-  const onFile = (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setPreview(URL.createObjectURL(f));
-    // store File object separately (we'll put it in FormData on save)
-    setProfile((p) => ({ ...p, _file: f }));
+  const onFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPreview(URL.createObjectURL(file));
+    setNewProfilePicFile(file); // Store File object
   };
 
-  const onChange = (e) => {
+  const onInputChange = (e) => {
     const { name, value } = e.target;
     setProfile((p) => ({ ...p, [name]: value }));
   };
 
-  const save = async (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
-    setMsg("");
+    setMsg({ type: "", text: "" });
 
     try {
       const form = new FormData();
-      // PATCH is safer so we only update provided fields
       form.append("username", profile.username);
       form.append("email", profile.email);
       form.append("contact", profile.contact);
-      if (profile._file) form.append("profile_pic", profile._file);
+      if (newProfilePicFile) {
+        form.append("profile_pic", newProfilePicFile);
+      }
 
-      const res = await fetch(API, {
+      const res = await fetch(`${API_URL}/api/profile/`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
         body: form,
@@ -71,175 +90,122 @@ export default function Profile() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        console.error(err);
-        setMsg("❌ Could not save profile");
-      } else {
-        const data = await res.json();
-        setMsg("✅ Profile updated");
-        setProfile((p) => ({
-          ...p,
-          profile_pic: data.profile_pic || p.profile_pic,
-          _file: undefined,
-        }));
-        setPreview(null);
+        throw new Error(err.detail || "Could not save profile");
       }
+      
+      const data = await res.json();
+      setMsg({ type: "success", text: "✅ Profile updated successfully!" });
+      setProfile((p) => ({
+        ...p,
+        profile_pic: data.profile_pic || p.profile_pic,
+      }));
+      setNewProfilePicFile(null);
+      setPreview(null);
+
     } catch (e) {
       console.error(e);
-      setMsg("⚠️ Network error");
+      setMsg({ type: "danger", text: `⚠️ ${e.message || 'Network error'}` });
     } finally {
       setSaving(false);
     }
   };
 
-  // Build image URL if server returned a relative path
   const imgSrc =
     preview ||
     (profile.profile_pic
       ? profile.profile_pic.startsWith("http")
         ? profile.profile_pic
-        : `http://127.0.0.1:8000${profile.profile_pic}`
-      : null);
+        : `${API_URL}${profile.profile_pic}`
+      : "https://placehold.co/150x150/EFEFEF/AAAAAA?text=No+Image");
 
   return (
-    <div style={{ maxWidth: 700, margin: "30px auto", padding: 20 }}>
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <h2>👤 My Profile</h2>
-        <a href="/dashboard">↩ Dashboard</a>
-      </div>
+    <Container className="my-4">
+      <Card className="shadow-sm">
+        <Card.Header as="h2" className="d-flex justify-content-between align-items-center">
+          👤 My Profile
+          <Button as={Link} to="/dashboard" variant="outline-secondary" size="sm">
+            <FaArrowLeft className="me-2" /> Back to Dashboard
+          </Button>
+        </Card.Header>
+        <Card.Body className="p-4">
+          {msg.text && (
+            <Alert variant={msg.type} onClose={() => setMsg({ type: "", text: "" })} dismissible>
+              {msg.text}
+            </Alert>
+          )}
+          {loading ? (
+             <div className="text-center p-5">
+                <Spinner animation="border" />
+                <p className="mt-2">Loading Profile...</p>
+             </div>
+          ) : (
+            <Form onSubmit={handleSave} encType="multipart/form-data">
+              <Row>
+                <Col md={4} className="text-center mb-4 mb-md-0">
+                  <Image
+                    src={imgSrc}
+                    alt="Profile Avatar"
+                    roundedCircle
+                    style={{ width: "150px", height: "150px", objectFit: "cover", border: "4px solid #eee" }}
+                  />
+                  <Form.Group controlId="formFile" className="mt-3">
+                     <Form.Label className="btn btn-outline-primary btn-sm">
+                        📷 Change Photo
+                        <Form.Control type="file" accept="image/*" onChange={onFileChange} hidden />
+                     </Form.Label>
+                  </Form.Group>
+                </Col>
 
-      {msg && (
-        <div
-          style={{
-            margin: "10px 0",
-            padding: "10px 12px",
-            borderRadius: 8,
-            background: "#f4f6f8",
-          }}
-        >
-          {msg}
-        </div>
-      )}
+                <Col md={8}>
+                  <Form.Group className="mb-3" controlId="formUsername">
+                    <Form.Label>Username</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="username"
+                      value={profile.username}
+                      onChange={onInputChange}
+                      required
+                    />
+                  </Form.Group>
 
-      <form onSubmit={save} encType="multipart/form-data">
-        <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
-          <div>
-            <div
-              style={{
-                width: 120,
-                height: 120,
-                borderRadius: "50%",
-                overflow: "hidden",
-                background: "#eee",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                border: "1px solid #ddd",
-              }}
-            >
-              {imgSrc ? (
-                <img
-                  src={imgSrc}
-                  alt="avatar"
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
-              ) : (
-                <span>no photo</span>
-              )}
-            </div>
-            <label
-              style={{
-                display: "inline-block",
-                marginTop: 10,
-                padding: "6px 10px",
-                border: "1px solid #ddd",
-                borderRadius: 8,
-                cursor: "pointer",
-              }}
-            >
-              📷 Change photo
-              <input
-                type="file"
-                accept="image/*"
-                style={{ display: "none" }}
-                onChange={onFile}
-              />
-            </label>
-          </div>
+                  <Form.Group className="mb-3" controlId="formEmail">
+                    <Form.Label>Email Address</Form.Label>
+                    <Form.Control
+                      type="email"
+                      name="email"
+                      value={profile.email}
+                      onChange={onInputChange}
+                      required
+                    />
+                  </Form.Group>
 
-          <div style={{ flex: 1 }}>
-            <div style={{ marginBottom: 12 }}>
-              <label>Username</label>
-              <input
-                name="username"
-                value={profile.username}
-                onChange={onChange}
-                required
-                style={{
-                  display: "block",
-                  width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: 8,
-                  border: "1px solid #ddd",
-                  marginTop: 6,
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: 12 }}>
-              <label>Email</label>
-              <input
-                type="email"
-                name="email"
-                value={profile.email}
-                onChange={onChange}
-                required
-                style={{
-                  display: "block",
-                  width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: 8,
-                  border: "1px solid #ddd",
-                  marginTop: 6,
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: 12 }}>
-              <label>Contact</label>
-              <input
-                name="contact"
-                value={profile.contact || ""}
-                onChange={onChange}
-                placeholder="Phone / other contact"
-                style={{
-                  display: "block",
-                  width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: 8,
-                  border: "1px solid #ddd",
-                  marginTop: 6,
-                }}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={saving}
-              style={{
-                padding: "10px 16px",
-                borderRadius: 10,
-                border: "none",
-                background: "#2c3e50",
-                color: "white",
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              {saving ? "Saving…" : "Save changes"}
-            </button>
-          </div>
-        </div>
-      </form>
-    </div>
+                  <Form.Group className="mb-3" controlId="formContact">
+                    <Form.Label>Contact Number</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="contact"
+                      value={profile.contact || ""}
+                      onChange={onInputChange}
+                      placeholder="e.g., +91 1234567890"
+                    />
+                  </Form.Group>
+                  
+                  <Button variant="primary" type="submit" disabled={saving}>
+                    {saving ? (
+                      <>
+                        <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Changes"
+                    )}
+                  </Button>
+                </Col>
+              </Row>
+            </Form>
+          )}
+        </Card.Body>
+      </Card>
+    </Container>
   );
 }

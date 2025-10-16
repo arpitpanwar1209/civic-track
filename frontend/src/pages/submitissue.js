@@ -1,326 +1,194 @@
-// frontend/src/pages/SubmitIssue.js
-import React, { useState, useEffect, useRef } from "react";
-import { Marker, Popup, useMapEvents } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
-import L from "leaflet";
-import SafeMap from "../components/safemap"; // ✅ Reuse safe map
+import React, { useState } from "react";
+import { Form, Button, Alert, Spinner } from "react-bootstrap";
 
-// Fix default leaflet icon
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
-  iconUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-  shadowUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-});
-
-// ✅ Shared coordinate validator (same as IssueMap/SafeMap)
-const isValidCoord = (lat, lon) =>
-  typeof lat === "number" &&
-  typeof lon === "number" &&
-  Number.isFinite(lat) &&
-  Number.isFinite(lon) &&
-  lat >= -90 &&
-  lat <= 90 &&
-  lon >= -180 &&
-  lon <= 180;
-
-export default function SubmitIssue({ token: tokenProp, onSubmitted }) {
-  const [token, setToken] = useState(tokenProp ?? null);
-  const fileInputRef = useRef(null);
-
-  useEffect(() => {
-    if (!token && !tokenProp) {
-      const stored = localStorage.getItem("access");
-      if (stored) setToken(stored);
-    }
-  }, [tokenProp, token]);
-
+export default function SubmitIssue() {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     category: "",
-    priority: "Low",
     location: "",
-    latitude: null,
-    longitude: null,
     photo: null,
+    priority: "medium",
   });
+  const [predictedCategory, setPredictedCategory] = useState(null);
+  const [loadingPrediction, setLoadingPrediction] = useState(false);
+  const [success, setSuccess] = useState(null);
+  const [error, setError] = useState(null);
 
-  const [message, setMessage] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
+  const token = localStorage.getItem("access");
 
-  useEffect(() => {
-    if (!message) return;
-    const t = setTimeout(() => setMessage(null), 3500);
-    return () => clearTimeout(t);
-  }, [message]);
-
-  // ✅ Draggable marker inside SafeMap
-  function DraggableMarker() {
-    useMapEvents({
-      click(e) {
-        const { lat, lng } = e.latlng;
-        if (isValidCoord(lat, lng)) {
-          setFormData((p) => ({ ...p, latitude: lat, longitude: lng }));
-        }
-      },
-    });
-
-    if (!isValidCoord(formData.latitude, formData.longitude)) return null;
-
-    return (
-      <Marker
-        position={[formData.latitude, formData.longitude]}
-        draggable
-        eventHandlers={{
-          dragend: (e) => {
-            const { lat, lng } = e.target.getLatLng();
-            if (isValidCoord(lat, lng)) {
-              setFormData((p) => ({ ...p, latitude: lat, longitude: lng }));
-            }
-          },
-        }}
-      >
-        <Popup>Drag or click to set location</Popup>
-      </Marker>
-    );
-  }
-
-  // ✅ Search via Nominatim
-  const handleSearch = async () => {
-    const q = (formData.location || "").trim();
-    if (!q) {
-      setMessage({ type: "error", text: "Enter a place to search." });
-      return;
+  // 🔹 Handle input change
+  const handleChange = (e) => {
+    const { name, value, files } = e.target;
+    if (name === "photo") {
+      setFormData({ ...formData, photo: files[0] });
+    } else {
+      setFormData({ ...formData, [name]: value });
     }
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          q
-        )}`
-      );
-      if (!res.ok) throw new Error("Search failed");
-      const data = await res.json();
-      if (!Array.isArray(data) || data.length === 0) {
-        setMessage({ type: "error", text: "Location not found." });
-        return;
-      }
-      const { lat, lon } = data[0];
-      const latN = Number(lat);
-      const lonN = Number(lon);
-      if (!isValidCoord(latN, lonN)) {
-        setMessage({ type: "error", text: "Invalid coordinates from search." });
-        return;
-      }
-      setFormData((p) => ({ ...p, latitude: latN, longitude: lonN }));
-      setMessage({ type: "success", text: "Location set." });
-    } catch (err) {
-      console.error("Search error:", err);
-      setMessage({ type: "error", text: "Search failed. Try again." });
+
+    // 🧠 Trigger prediction when typing description
+    if (name === "description" && value.length > 10) {
+      predictCategory(value);
     }
   };
 
-  // ✅ Submit handler
+  // 🔹 AI Category Prediction
+  const predictCategory = async (description) => {
+    try {
+      setLoadingPrediction(true);
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/predict-category/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ description }),
+      });
+      const data = await res.json();
+      if (res.ok && data.predicted_category) {
+        setPredictedCategory(data.predicted_category);
+        setFormData({ ...formData, category: data.predicted_category });
+      } else {
+        setPredictedCategory(null);
+      }
+    } catch (err) {
+      console.error("Prediction error:", err);
+    } finally {
+      setLoadingPrediction(false);
+    }
+  };
+
+  // 🔹 Handle Submit
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitting(true);
+    setError(null);
+    setSuccess(null);
 
-    if (!formData.title.trim() || !formData.description.trim()) {
-      setMessage({ type: "error", text: "Title and description are required." });
-      setSubmitting(false);
-      return;
+    const submitData = new FormData();
+    for (const key in formData) {
+      submitData.append(key, formData[key]);
     }
-
-    const body = new FormData();
-    body.append("title", formData.title.trim());
-    body.append("description", formData.description.trim());
-    if (formData.category) body.append("category", formData.category.trim());
-    if (formData.priority) body.append("priority", formData.priority);
-    if (isValidCoord(formData.latitude, formData.longitude)) {
-      body.append("latitude", formData.latitude);
-      body.append("longitude", formData.longitude);
-    }
-    if (formData.location) body.append("location", formData.location);
-    if (formData.photo) body.append("photo", formData.photo);
-
-    const headers = {};
-    if (token) headers.Authorization = `Bearer ${token}`;
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/issues/", {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/issues/`, {
         method: "POST",
-        headers,
-        body,
+        headers: { Authorization: `Bearer ${token}` },
+        body: submitData,
       });
 
       if (res.ok) {
-        const result = await res.json().catch(() => null);
-        setMessage({ type: "success", text: "✅ Issue submitted successfully!" });
+        setSuccess("✅ Issue submitted successfully!");
         setFormData({
           title: "",
           description: "",
           category: "",
-          priority: "Low",
           location: "",
-          latitude: null,
-          longitude: null,
           photo: null,
+          priority: "medium",
         });
-        if (fileInputRef.current) fileInputRef.current.value = null;
-        if (typeof onSubmitted === "function") onSubmitted(result);
+        setPredictedCategory(null);
       } else {
-        const err = await res.json().catch(() => null);
-        setMessage({
-          type: "error",
-          text:
-            err?.detail ||
-            (typeof err === "object"
-              ? Object.entries(err)
-                  .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
-                  .join("; ")
-              : "Failed to submit issue."),
-        });
+        setError("Failed to submit issue.");
       }
     } catch (err) {
-      console.error("Submit error", err);
-      setMessage({ type: "error", text: "Network/server error." });
-    } finally {
-      setSubmitting(false);
+      setError("Error submitting issue.");
     }
   };
 
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto", padding: 16 }}>
-      <h2 style={{ marginBottom: 12 }}>➕ Submit New Issue</h2>
+    <Form onSubmit={handleSubmit} className="p-3 shadow-sm rounded bg-light">
+      {success && <Alert variant="success">{success}</Alert>}
+      {error && <Alert variant="danger">{error}</Alert>}
 
-      {message && (
-        <div
-          style={{
-            marginBottom: 12,
-            padding: 10,
-            borderRadius: 6,
-            color: "#fff",
-            background: message.type === "success" ? "#2ecc71" : "#e74c3c",
-            fontWeight: 500,
-          }}
-        >
-          {message.text}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit}>
-        <input
+      <Form.Group className="mb-3">
+        <Form.Label>Title</Form.Label>
+        <Form.Control
           type="text"
-          placeholder="Title *"
+          name="title"
           value={formData.title}
-          onChange={(e) =>
-            setFormData((p) => ({ ...p, title: e.target.value }))
-          }
+          onChange={handleChange}
+          placeholder="Enter a short title"
           required
-          style={{ display: "block", width: "100%", marginBottom: 12, padding: 10 }}
         />
+      </Form.Group>
 
-        <textarea
-          placeholder="Description *"
+      <Form.Group className="mb-3">
+        <Form.Label>Description</Form.Label>
+        <Form.Control
+          as="textarea"
+          rows={4}
+          name="description"
           value={formData.description}
-          onChange={(e) =>
-            setFormData((p) => ({ ...p, description: e.target.value }))
-          }
+          onChange={handleChange}
+          placeholder="Describe the issue in detail"
           required
-          style={{
-            display: "block",
-            width: "100%",
-            marginBottom: 12,
-            padding: 10,
-            minHeight: 100,
-          }}
         />
+        {loadingPrediction && (
+          <div className="mt-2 text-muted small">
+            <Spinner animation="border" size="sm" /> Analyzing description...
+          </div>
+        )}
+        {predictedCategory && (
+          <Alert variant="info" className="mt-2">
+            🤖 Suggested Category: <strong>{predictedCategory}</strong>
+          </Alert>
+        )}
+      </Form.Group>
 
-        <input
-          type="text"
-          placeholder="Category (e.g. road, water)"
+      <Form.Group className="mb-3">
+        <Form.Label>Category</Form.Label>
+        <Form.Select
+          name="category"
           value={formData.category}
-          onChange={(e) =>
-            setFormData((p) => ({ ...p, category: e.target.value }))
-          }
-          style={{ display: "block", width: "100%", marginBottom: 12, padding: 10 }}
-        />
+          onChange={handleChange}
+          required
+        >
+          <option value="">Select Category</option>
+          <option value="road">Road</option>
+          <option value="garbage">Garbage</option>
+          <option value="water">Water Supply</option>
+          <option value="electricity">Electricity</option>
+          <option value="sewage">Sewage</option>
+          <option value="lighting">Street Lighting</option>
+          <option value="pollution">Pollution</option>
+          <option value="traffic">Traffic</option>
+          <option value="other">Other</option>
+        </Form.Select>
+      </Form.Group>
 
-        <select
+      <Form.Group className="mb-3">
+        <Form.Label>Location</Form.Label>
+        <Form.Control
+          type="text"
+          name="location"
+          value={formData.location}
+          onChange={handleChange}
+          placeholder="Enter location (optional)"
+        />
+      </Form.Group>
+
+      <Form.Group className="mb-3">
+        <Form.Label>Photo</Form.Label>
+        <Form.Control type="file" name="photo" onChange={handleChange} />
+      </Form.Group>
+
+      <Form.Group className="mb-3">
+        <Form.Label>Priority</Form.Label>
+        <Form.Select
+          name="priority"
           value={formData.priority}
-          onChange={(e) =>
-            setFormData((p) => ({ ...p, priority: e.target.value }))
-          }
-          style={{ display: "block", width: "100%", marginBottom: 12, padding: 10 }}
+          onChange={handleChange}
         >
-          <option value="Low">Low</option>
-          <option value="Medium">Medium</option>
-          <option value="High">High</option>
-          <option value="Urgent">Urgent</option>
-        </select>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="urgent">Urgent</option>
+        </Form.Select>
+      </Form.Group>
 
-        {/* Search input + button */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          <input
-            type="text"
-            placeholder="Search location"
-            value={formData.location}
-            onChange={(e) =>
-              setFormData((p) => ({ ...p, location: e.target.value }))
-            }
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleSearch();
-              }
-            }}
-            style={{ flex: 1, padding: 10 }}
-          />
-          <button type="button" onClick={handleSearch} style={{ padding: "10px 14px" }}>
-            🔍
-          </button>
-        </div>
-
-        {/* ✅ SafeMap instead of raw MapContainer */}
-        <div
-          style={{
-            height: 400,
-            width: "100%",
-            marginBottom: 12,
-            borderRadius: 8,
-            overflow: "hidden",
-          }}
-        >
-          <SafeMap
-            latitude={formData.latitude}
-            longitude={formData.longitude}
-            zoom={13}
-            style={{ height: "100%", width: "100%" }}
-          >
-            <DraggableMarker />
-          </SafeMap>
-        </div>
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={(e) =>
-            setFormData((p) => ({
-              ...p,
-              photo: e.target.files?.[0] ?? null,
-            }))
-          }
-          style={{ display: "block", marginBottom: 12 }}
-        />
-
-        <button type="submit" disabled={submitting} style={{ padding: "10px 16px" }}>
-          {submitting ? "Submitting..." : "Submit Issue"}
-        </button>
-      </form>
-    </div>
+      <Button type="submit" variant="primary" className="w-100">
+        Submit Issue
+      </Button>
+    </Form>
   );
 }
