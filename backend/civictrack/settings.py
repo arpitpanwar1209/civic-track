@@ -11,7 +11,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Quick-start development settings - unsuitable for production
 SECRET_KEY = 'django-insecure-7iwuu^)nr@1jih2)(wt(xkb!q%bm#gw)$3lkndu&2xd7xh12dz'
-DEBUG = True
+DEBUG = False
 ALLOWED_HOSTS = []
 
 
@@ -144,3 +144,19 @@ AUTH_USER_MODEL = 'accounts.CustomUser'
 # Redirects
 LOGIN_REDIRECT_URL = 'accounts/dashboard'
 LOGOUT_REDIRECT_URL = 'home'
+
+
+import dj_database_url
+
+
+DATABASES = {
+        'default': dj_database_url.config(
+            default=''ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'civictrack',
+        'USER': 'arpit',
+        'PASSWORD': 'Gurjar@1209',
+        'HOST': 'localhost',
+        'PORT': '5432',', # Replace with your actual connection string or environment variable
+            conn_max_age=600,
+        )
+    }
