@@ -1,21 +1,19 @@
 """
-Django settings for civictrack project.
+Django settings for civictrack project (Deployment Ready)
 """
 
 from pathlib import Path
 from datetime import timedelta
+import os
+import dj_database_url
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+# --- BASE SETTINGS ---
 BASE_DIR = Path(__file__).resolve().parent.parent
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-7iwuu^)nr@1jih2)(wt(xkb!q%bm#gw)$3lkndu&2xd7xh12dz')
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost 127.0.0.1').split()
 
-
-# Quick-start development settings - unsuitable for production
-SECRET_KEY = 'django-insecure-7iwuu^)nr@1jih2)(wt(xkb!q%bm#gw)$3lkndu&2xd7xh12dz'
-DEBUG = False
-ALLOWED_HOSTS = []
-
-
-# Application definition
+# --- APPLICATIONS ---
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -24,21 +22,20 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    # Your apps
+    # Local apps
     'accounts',
     'moderation',
     'reports',
     'ml_api',
     'ml',
-    
-    
 
     # Third-party
     'rest_framework',
-    "rest_framework_simplejwt",
-    "corsheaders",
+    'rest_framework_simplejwt',
+    'corsheaders',
 ]
 
+# --- MIDDLEWARE ---
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
@@ -50,15 +47,18 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# ✅ CORS settings for React frontend
+# --- CORS SETTINGS (for React Frontend) ---
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
 CORS_ALLOW_CREDENTIALS = True
 
+# --- URL / WSGI ---
 ROOT_URLCONF = 'civictrack.urls'
+WSGI_APPLICATION = 'civictrack.wsgi.application'
 
+# --- TEMPLATES ---
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -74,23 +74,24 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'civictrack.wsgi.application'
-
-
-# Database
+# --- DATABASE CONFIGURATION ---
+# Default local setup
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'civictrack',
-        'USER': 'arpit',
-        'PASSWORD': 'Gurjar@1209',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': os.environ.get('POSTGRES_DB', 'civictrack'),
+        'USER': os.environ.get('POSTGRES_USER', 'arpit'),
+        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'Gurjar@1209'),
+        'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
+        'PORT': os.environ.get('POSTGRES_PORT', '5432'),
     }
 }
 
+# For production deployment (e.g. Render/Heroku)
+db_from_env = dj_database_url.config(conn_max_age=600, ssl_require=not DEBUG)
+DATABASES['default'].update(db_from_env)
 
-# Password validation
+# --- PASSWORD VALIDATORS ---
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -98,65 +99,53 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-
-# ✅ REST Framework / JWT
+# --- JWT / REST FRAMEWORK ---
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
-    "DEFAULT_PAGINATION_CLASS": None,
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),   # ⏳ Access token valid for 30 min
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),      # 🔄 Refresh token valid for 7 days
-    "ROTATE_REFRESH_TOKENS": True,                    # New refresh token every time
-    "BLACKLIST_AFTER_ROTATION": True,                 # Old refresh tokens invalid
-    "AUTH_HEADER_TYPES": ("Bearer",),                 # "Authorization: Bearer <token>"
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-
-
-# Internationalization
+# --- INTERNATIONALIZATION ---
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
+# --- STATIC & MEDIA ---
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # for collectstatic in production
+STATICFILES_DIRS = [BASE_DIR / 'static']
 
-# Static files
-STATIC_URL = 'static/'
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
-
-# Default primary key field type
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# Tailwind
-TAILWIND_APP_NAME = 'theme'
-INTERNAL_IPS = ["127.0.0.1"]
-
-# Custom user
+# --- CUSTOM USER ---
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
-# Redirects
+# --- REDIRECTS ---
 LOGIN_REDIRECT_URL = 'accounts/dashboard'
 LOGOUT_REDIRECT_URL = 'home'
 
+# --- SECURITY (Production) ---
+if not DEBUG:
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
 
-import dj_database_url
-
-
-DATABASES = {
-        'default': dj_database_url.config(
-            default=''ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'civictrack',
-        'USER': 'arpit',
-        'PASSWORD': 'Gurjar@1209',
-        'HOST': 'localhost',
-        'PORT': '5432',', # Replace with your actual connection string or environment variable
-            conn_max_age=600,
-        )
-    }
+# --- TAILWIND / INTERNAL ---
+TAILWIND_APP_NAME = 'theme'
+INTERNAL_IPS = ["127.0.0.1"]
