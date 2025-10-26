@@ -18,33 +18,35 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-7iwuu^)nr@1jih
 # DEBUG is False by default, or True if 'DJANGO_DEBUG' is set to 'true'
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
 
-# Define your production hostnames
-RENDER_BACKEND_HOST = 'civic-track-v2k5.onrender.com'
-VERCEL_FRONTEND_HOST = 'civic-track-phi.vercel.app'
+# --- SECURITY & HOSTS (FOR RENDER + VERCEL) ---
+
+# Your Vercel frontend URL (no slash at the end)
+VERCEL_FRONTEND_URL = "https.civic-track-phi.vercel.app"
+
+# Your Render backend URL
+RENDER_BACKEND_URL = "https.civic-track-v2k5.onrender.com"
 
 ALLOWED_HOSTS = [
-    RENDER_BACKEND_HOST,
-    VERCEL_FRONTEND_HOST,
-    'localhost',
-    '127.0.0.1',
+    "civic-track-v2k5.onrender.com",  # Your Render backend
+    "civic-track-phi.vercel.app",   # Your Vercel frontend
+    "localhost",
+    "127.0.0.1",
 ]
 
-# (This was the missing section)
 CORS_ALLOWED_ORIGINS = [
-    f"https://{VERCEL_FRONTEND_HOST}",
-    "http://localhost:3000",        # For local React dev (if you use port 3000)
-    "http://127.0.0.1:3000",       # For local React dev
+    VERCEL_FRONTEND_URL,
+    "http://localhost:3000",        # For local React dev
+    "http://127.0.0.1:3000",
 ]
 
-# (This was the fixed section - needed 'https://')
 CSRF_TRUSTED_ORIGINS = [
-    f"https://{VERCEL_FRONTEND_HOST}",
+    RENDER_BACKEND_URL,
+    VERCEL_FRONTEND_URL,
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
-
 # --- APPLICATIONS ---
 INSTALLED_APPS = [
     'django.contrib.admin',
