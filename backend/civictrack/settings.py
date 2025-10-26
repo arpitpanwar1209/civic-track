@@ -4,19 +4,46 @@ Django settings for civictrack project (Deployment Ready)
 
 from pathlib import Path
 from datetime import timedelta
-
-
-# Load environment variables from .env file
-
-
 import os
 import dj_database_url
 
 # --- BASE SETTINGS ---
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# --- SECURITY & HOSTS (FOR RENDER + VERCEL) ---
+
+# Secret key is read from the environment variable 'DJANGO_SECRET_KEY'
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-7iwuu^)nr@1jih2)(wt(xkb!q%bm#gw)$3lkndu&2xd7xh12dz')
+
+# DEBUG is False by default, or True if 'DJANGO_DEBUG' is set to 'true'
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
-ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost 127.0.0.1').split()
+
+# Define your production hostnames
+RENDER_BACKEND_HOST = 'civic-track-v2k5.onrender.com'
+VERCEL_FRONTEND_HOST = 'civic-track-phi.vercel.app'
+
+ALLOWED_HOSTS = [
+    RENDER_BACKEND_HOST,
+    VERCEL_FRONTEND_HOST,
+    'localhost',
+    '127.0.0.1',
+]
+
+# (This was the missing section)
+CORS_ALLOWED_ORIGINS = [
+    f"https://{VERCEL_FRONTEND_HOST}",
+    "http://localhost:3000",        # For local React dev (if you use port 3000)
+    "http://127.0.0.1:3000",       # For local React dev
+]
+
+# (This was the fixed section - needed 'https://')
+CSRF_TRUSTED_ORIGINS = [
+    f"https://{VERCEL_FRONTEND_HOST}",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+CORS_ALLOW_CREDENTIALS = True
 
 # --- APPLICATIONS ---
 INSTALLED_APPS = [
@@ -42,8 +69,8 @@ INSTALLED_APPS = [
 
 # --- MIDDLEWARE ---
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
+    "corsheaders.middleware.CorsMiddleware",        # CORS must be high up
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -51,15 +78,6 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-
-# --- CORS SETTINGS (for React Frontend) ---
-ALLOWED_HOSTS = [
-    'civic-track-v2k5.onrender.com',  # Your new Render backend URL
-    'civic-track-phi.vercel.app/',  # Your Vercel frontend URL
-    'localhost',
-    '127.0.0.1',
-]
-CORS_ALLOW_CREDENTIALS = True
 
 # --- URL / WSGI ---
 ROOT_URLCONF = 'civictrack.urls'
@@ -82,7 +100,7 @@ TEMPLATES = [
 ]
 
 # --- DATABASE CONFIGURATION ---
-# Default local setup
+# Default to a local PostgreSQL database
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -94,9 +112,15 @@ DATABASES = {
     }
 }
 
-# For production deployment (e.g. Render/Heroku)
-db_from_env = dj_database_url.config(conn_max_age=600, ssl_require=not DEBUG)
-DATABASES['default'].update(db_from_env)
+# Check for the 'DATABASE_URL' environment variable (used by Render)
+# This will override the local settings above if the variable exists
+db_from_env = dj_database_url.config(
+    default=None, # Do not use a default, only use if var exists
+    conn_max_age=600,
+    ssl_require=not DEBUG # Require SSL when not in DEBUG mode
+)
+if db_from_env:
+    DATABASES['default'].update(db_from_env)
 
 # --- PASSWORD VALIDATORS ---
 AUTH_PASSWORD_VALIDATORS = [
@@ -130,8 +154,8 @@ USE_TZ = True
 
 # --- STATIC & MEDIA ---
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'  # for collectstatic in production
 STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles' # For Render's 'collectstatic'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -144,6 +168,7 @@ LOGIN_REDIRECT_URL = 'accounts/dashboard'
 LOGOUT_REDIRECT_URL = 'home'
 
 # --- SECURITY (Production) ---
+# These settings apply when DEBUG is False
 if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
@@ -156,7 +181,3 @@ if not DEBUG:
 # --- TAILWIND / INTERNAL ---
 TAILWIND_APP_NAME = 'theme'
 INTERNAL_IPS = ["127.0.0.1"]
-
-CSRF_TRUSTED_ORIGINS = [
-    "civic-track-phi.vercel.app/",
-]
