@@ -4,10 +4,10 @@ Django settings for civictrack project (Deployment Ready)
 
 from pathlib import Path
 from datetime import timedelta
-from dotenv import load_dotenv
+
 
 # Load environment variables from .env file
-load_dotenv()
+
 
 import os
 import dj_database_url
