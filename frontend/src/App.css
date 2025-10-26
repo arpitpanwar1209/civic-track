@@ -42,3 +42,28 @@
     transform: rotate(360deg);
   }
 }
+
+/*
+CSS for App.js Navbar Effects
+*/
+
+/* --- Simple Hover & Touch Effects --- */
+
+/* Base style for all links */
+.nav-link, .nav-link-brand {
+  /* This makes the effect smooth */
+  transition: all 0.2s ease-in-out;
+}
+
+/* --- Effect 1: Grow on Hover (Cursor) --- */
+.nav-link:hover, .nav-link-brand:hover {
+  transform: scale(1.1); /* Makes the link 10% bigger */
+  /* Uses a common info/link color from Bootstrap */
+  color: #17a2b8 !important; 
+}
+
+/* --- Effect 2: Shrink on Click (Touch/Mouse) --- */
+.nav-link:active, .nav-link-brand:active {
+  transform: scale(0.95); /* Makes the link 5% smaller when clicked */
+  opacity: 0.8; /* Slightly fades it */
+}
