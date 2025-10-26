@@ -1,0 +1,65 @@
+# --- Virtual Environments ---
+# Ignore all common virtual environment folders
+env/
+venv/
+envc/
+.venv/
+ENV/
+*.venv
+
+# --- Environment Variables ---
+# Ignore environment files, which contain secrets
+.env
+.env.local
+*.env
+db.env
+
+# --- Python / Bytecode ---
+# Ignore compiled Python files and caches
+*.py[cod]
+*$py.class
+*.pyc
+__pycache__/
+.eggs/
+*.egg-info/
+
+# --- Django ---
+# Ignore files specific to a running Django instance
+*.log
+db.sqlite3
+PostgreSQL/
+media/
+staticfiles/
+
+# --- Django Migrations ---
+# Uncomment the line below if you do not want to track migrations.
+# */migrations/*.py
+# !*/migrations/__init__.py
+
+# --- Frontend / Node.js ---
+# Ignore frontend dependencies and build output
+node_modules/
+build/
+dist/
+package-lock.json
+
+# --- IDEs / Editors ---
+# Ignore configuration folders for common editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# --- OS-specific ---
+# Ignore files created by operating systems
+.DS_Store
+Thumbs.db
+
+# --- Temporary Files ---
+# Ignore miscellaneous temporary or backup files
+*.tmp
+*.swp
+*.bak
+*.orig
+*.manifest
+*.spec
