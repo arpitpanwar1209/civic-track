@@ -11,6 +11,9 @@ import {
   Spinner,
 } from "react-bootstrap";
 
+// 1. ADD THIS LINE
+const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
+
 function Login() {
   const [formData, setFormData] = useState({
     username: "",
@@ -32,7 +35,8 @@ function Login() {
     setSubmitting(true);
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/accounts/login/", {
+      // 2. CHANGE THIS LINE
+      const res = await fetch(`${API_URL}/accounts/login/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -52,6 +56,7 @@ function Login() {
         setError(data.detail || "Invalid username or password.");
       }
     } catch (err) {
+      console.error(err); // Add this line to see the error in the console
       setError("Something went wrong. Please check your connection and try again.");
     } finally {
       setSubmitting(false);

@@ -18,6 +18,9 @@ import {
 } from "react-bootstrap";
 import { FaArrowLeft } from "react-icons/fa";
 
+// 1. ADD THIS LINE
+const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
+
 // Fix leaflet marker icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -48,7 +51,8 @@ export default function EditIssue() {
 
   // Fetch issue details
   useEffect(() => {
-    fetch(`http://127.0.0.1:8000/api/issues/${id}/`, {
+    // 2. CHANGE THIS LINE
+    fetch(`${API_URL}/api/issues/${id}/`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => {
@@ -104,7 +108,7 @@ export default function EditIssue() {
     );
   }
 
-  // Search location with OpenStreetMap
+  // Search location with OpenStreetMap (This URL is correct, do not change)
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!searchQuery) return;
@@ -142,7 +146,8 @@ export default function EditIssue() {
     if (photo) body.append("photo", photo);
 
     try {
-        const res = await fetch(`http://127.0.0.1:8000/api/issues/${id}/`, {
+        // 3. CHANGE THIS LINE
+        const res = await fetch(`${API_URL}/api/issues/${id}/`, {
             method: "PATCH",
             headers: { Authorization: `Bearer ${token}` },
             body,

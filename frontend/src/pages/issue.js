@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from "react";
 
+// 1. ADD THIS LINE
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+
 export default function Issue() {
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("http://localhost:8000/api/issues/")
+    // 2. CHANGE THIS LINE
+    fetch(`${API_URL}/api/issues/`)
       .then((res) => res.json())
       .then((data) => {
         console.log("API Response:", data); // 🔍 Debugging
