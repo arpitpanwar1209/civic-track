@@ -156,3 +156,7 @@ if not DEBUG:
 # --- TAILWIND / INTERNAL ---
 TAILWIND_APP_NAME = 'theme'
 INTERNAL_IPS = ["127.0.0.1"]
+
+CSRF_TRUSTED_ORIGINS = [
+    "civic-track-phi.vercel.app/",
+]

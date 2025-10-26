@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_URL = 'http://127.0.0.1:8000';
+// Use the environment variable, or fall back to localhost if it's not set
+const API_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';
 
 const axiosInstance = axios.create({
     baseURL: API_URL,
@@ -33,6 +34,8 @@ axiosInstance.interceptors.response.use(
 
             try {
                 const refreshToken = localStorage.getItem('refresh');
+                
+                // This line will now correctly use the environment-specific API_URL
                 const response = await axios.post(`${API_URL}/accounts/token/refresh/`, {
                     refresh: refreshToken,
                 });
