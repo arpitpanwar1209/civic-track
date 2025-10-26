@@ -21,10 +21,10 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
 # --- SECURITY & HOSTS (FOR RENDER + VERCEL) ---
 
 # Your Vercel frontend URL (no slash at the end)
-VERCEL_FRONTEND_URL = "https.civic-track-phi.vercel.app"
+VERCEL_FRONTEND_URL = "https://civic-track-phi.vercel.app"
 
 # Your Render backend URL
-RENDER_BACKEND_URL = "https.civic-track-v2k5.onrender.com"
+RENDER_BACKEND_URL = "https://civic-track-v2k5.onrender.com"
 
 ALLOWED_HOSTS = [
     "civic-track-v2k5.onrender.com",  # Your Render backend
