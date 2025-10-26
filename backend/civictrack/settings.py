@@ -53,9 +53,11 @@ MIDDLEWARE = [
 ]
 
 # --- CORS SETTINGS (for React Frontend) ---
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
+ALLOWED_HOSTS = [
+    'civic-track-v2k5.onrender.com',  # Your new Render backend URL
+    'civic-track-phi.vercel.app/',  # Your Vercel frontend URL
+    'localhost',
+    '127.0.0.1',
 ]
 CORS_ALLOW_CREDENTIALS = True
 
