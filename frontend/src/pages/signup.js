@@ -11,7 +11,7 @@ import {
   Spinner,
 } from "react-bootstrap";
 
-// 1. ADD THIS LINE
+// 🔗 Use .env value if available, otherwise fallback to local API
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
 function Signup() {
@@ -26,9 +26,8 @@ function Signup() {
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
 
-  const handleChange = (e) => {
+  const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,36 +36,69 @@ function Signup() {
     setSubmitting(true);
 
     try {
-      // 2. CHANGE THIS LINE
-      const res = await fetch(`${API_URL}/accounts/signup/`, {
+      // ✅ Signup API (Django endpoint)
+      const res = await fetch(`${API_URL}/api/accounts/signup/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
 
+      const data = await res.json();
+
       if (res.ok) {
-        setSuccess("🎉 Signup successful! Redirecting to login...");
-        setTimeout(() => navigate("/login"), 1500);
+        setSuccess("🎉 Account created successfully!");
+
+        // ✅ Auto-login after signup (optional)
+        const loginRes = await fetch(`${API_URL}/api/token/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: formData.username,
+            password: formData.password,
+          }),
+        });
+
+        const loginData = await loginRes.json();
+
+        if (loginRes.ok) {
+          // Store JWT tokens
+          localStorage.setItem("access", loginData.access);
+          localStorage.setItem("refresh", loginData.refresh);
+          localStorage.setItem("username", formData.username);
+          localStorage.setItem("role", formData.role);
+
+          setTimeout(() => navigate("/dashboard"), 1200);
+        } else {
+          // If auto-login fails, redirect to login manually
+          setTimeout(() => navigate("/login"), 1500);
+        }
       } else {
-        const data = await res.json();
-        // Handle nested error messages (e.g., from Django Rest Framework)
-        if (typeof data === 'object' && data !== null) {
-          const errorMessages = Object.entries(data).map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`).join('; ');
+        // Handle detailed Django REST Framework errors
+        if (typeof data === "object" && data !== null) {
+          const errorMessages = Object.entries(data)
+            .map(
+              ([key, value]) =>
+                `${key}: ${Array.isArray(value) ? value.join(", ") : value}`
+            )
+            .join("; ");
           setError(errorMessages);
         } else {
           setError(data.detail || "An unknown error occurred.");
         }
       }
     } catch (err) {
-      console.error(err); // Add this line to see the error in the console
-      setError("Something went wrong. Please check your connection and try again.");
+      console.error("❌ Signup error:", err);
+      setError("Something went wrong. Please check your connection.");
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <Container className="d-flex align-items-center justify-content-center" style={{ minHeight: "80vh" }}>
+    <Container
+      className="d-flex align-items-center justify-content-center"
+      style={{ minHeight: "80vh" }}
+    >
       <Row className="w-100">
         <Col md={6} lg={5} xl={4} className="mx-auto">
           <Card className="shadow-sm">
@@ -115,7 +147,11 @@ function Signup() {
 
                 <Form.Group className="mb-4" controlId="formRole">
                   <Form.Label>I am a</Form.Label>
-                  <Form.Select name="role" value={formData.role} onChange={handleChange}>
+                  <Form.Select
+                    name="role"
+                    value={formData.role}
+                    onChange={handleChange}
+                  >
                     <option value="consumer">Consumer (Reporting Issues)</option>
                     <option value="provider">Provider (Resolving Issues)</option>
                   </Form.Select>
@@ -141,6 +177,7 @@ function Signup() {
                   </Button>
                 </div>
               </Form>
+
               <div className="text-center mt-3">
                 <small>
                   Already have an account? <Link to="/login">Log In</Link>

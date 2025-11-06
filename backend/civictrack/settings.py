@@ -6,17 +6,21 @@ from pathlib import Path
 from datetime import timedelta
 import os
 import dj_database_url
+from dotenv import load_dotenv
 
-# --- BASE SETTINGS ---
 BASE_DIR = Path(__file__).resolve().parent.parent
+# Load .env for local dev (Render/production will provide env vars)
+load_dotenv(BASE_DIR / ".env.development")
+load_dotenv(bacckend_dir := BASE_DIR /  ".env.development")
+# --- BASE SETTINGS ---
+
 
 # --- SECURITY & HOSTS (FOR RENDER + VERCEL) ---
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-secret-for-local")
+DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() in ("1", "true", "yes")
 
-# Secret key is read from the environment variable 'DJANGO_SECRET_KEY'
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-7iwuu^)nr@1jih2)(wt(xkb!q%bm#gw)$3lkndu&2xd7xh12dz')
+ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
-# DEBUG is False by default, or True if 'DJANGO_DEBUG' is set to 'true'
-DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
 
 # --- SECURITY & HOSTS (FOR RENDER + VERCEL) ---
 
@@ -26,18 +30,11 @@ VERCEL_FRONTEND_URL = "https://civic-track-phi.vercel.app"
 # Your Render backend URL
 RENDER_BACKEND_URL = "https://civic-track-v2k5.onrender.com"
 
-ALLOWED_HOSTS = [
-    "civic-track-v2k5.onrender.com",  # Your Render backend
-    "civic-track-phi.vercel.app",   # Your Vercel frontend
-    "localhost",
-    "127.0.0.1",
-]
 
-CORS_ALLOWED_ORIGINS = [
-    VERCEL_FRONTEND_URL,
-    "http://localhost:3000",        # For local React dev
-    "http://127.0.0.1:3000",
-]
+CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000").split(",")
+CORS_ALLOW_CREDENTIALS = True
+
 
 CSRF_TRUSTED_ORIGINS = [
     RENDER_BACKEND_URL,
@@ -46,7 +43,7 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:3000",
 ]
 
-CORS_ALLOW_CREDENTIALS = True
+
 # --- APPLICATIONS ---
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -131,14 +128,13 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
-
-# --- JWT / REST FRAMEWORK ---
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
 }
+
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
@@ -183,3 +179,10 @@ if not DEBUG:
 # --- TAILWIND / INTERNAL ---
 TAILWIND_APP_NAME = 'theme'
 INTERNAL_IPS = ["127.0.0.1"]
+
+
+#FRONTEND_URL = "http://localhost:3000"  # during development
+# When deployed, change to: "https://your-vercel-app.vercel.app"
+DEFAULT_FROM_EMAIL = "noreply@civictrack.com"
+
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"  # For now logs in terminal

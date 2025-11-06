@@ -9,24 +9,23 @@ import {
   Button,
   Alert,
   Spinner,
+  Modal,
 } from "react-bootstrap";
 
-// 1. ADD THIS LINE
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
 function Login() {
-  const [formData, setFormData] = useState({
-    username: "",
-    password: "",
-  });
+  const [formData, setFormData] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetMsg, setResetMsg] = useState("");
   const navigate = useNavigate();
 
-  const handleChange = (e) => {
+  const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,8 +34,7 @@ function Login() {
     setSubmitting(true);
 
     try {
-      // 2. CHANGE THIS LINE
-      const res = await fetch(`${API_URL}/accounts/login/`, {
+      const res = await fetch(`${API_URL}/api/accounts/login/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -56,15 +54,41 @@ function Login() {
         setError(data.detail || "Invalid username or password.");
       }
     } catch (err) {
-      console.error(err); // Add this line to see the error in the console
-      setError("Something went wrong. Please check your connection and try again.");
+      console.error(err);
+      setError("Something went wrong. Please try again.");
     } finally {
       setSubmitting(false);
     }
   };
 
+  const handlePasswordReset = async (e) => {
+    e.preventDefault();
+    setResetMsg("");
+
+    try {
+      const res = await fetch(`${API_URL}/api/accounts/password-reset/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: resetEmail }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setResetMsg("✅ Password reset link sent to your email.");
+      } else {
+        setResetMsg(data.detail || "Failed to send reset email.");
+      }
+    } catch (err) {
+      console.error(err);
+      setResetMsg("⚠️ Error sending reset link.");
+    }
+  };
+
   return (
-    <Container className="d-flex align-items-center justify-content-center" style={{ minHeight: "80vh" }}>
+    <Container
+      className="d-flex align-items-center justify-content-center"
+      style={{ minHeight: "80vh" }}
+    >
       <Row className="w-100">
         <Col md={6} lg={5} xl={4} className="mx-auto">
           <Card className="shadow-sm">
@@ -119,7 +143,21 @@ function Login() {
                   </Button>
                 </div>
               </Form>
+
               <div className="text-center mt-3">
+                <small>
+                  Forgot your password?{" "}
+                  <Button
+                    variant="link"
+                    className="p-0"
+                    onClick={() => setShowModal(true)}
+                  >
+                    Reset here
+                  </Button>
+                </small>
+              </div>
+
+              <div className="text-center mt-2">
                 <small>
                   Don't have an account? <Link to="/signup">Sign Up</Link>
                 </small>
@@ -128,6 +166,31 @@ function Login() {
           </Card>
         </Col>
       </Row>
+
+      {/* 🔹 Password Reset Modal */}
+      <Modal show={showModal} onHide={() => setShowModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Reset Your Password</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form onSubmit={handlePasswordReset}>
+            <Form.Group className="mb-3">
+              <Form.Label>Email Address</Form.Label>
+              <Form.Control
+                type="email"
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+                placeholder="Enter your registered email"
+                required
+              />
+            </Form.Group>
+            <Button variant="primary" type="submit" className="w-100">
+              Send Reset Link
+            </Button>
+          </Form>
+          {resetMsg && <Alert className="mt-3">{resetMsg}</Alert>}
+        </Modal.Body>
+      </Modal>
     </Container>
   );
 }

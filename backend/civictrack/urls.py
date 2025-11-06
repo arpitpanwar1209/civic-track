@@ -21,7 +21,7 @@ urlpatterns = [
     path("", home, name="home"),
 
     # 👤 Accounts & Profile Management
-    path("accounts/", include("accounts.urls")),
+    path("api/accounts/", include("accounts.urls")),
     path("api/profile/", UserProfileUpdateView.as_view(), name="profile"),
 
 
