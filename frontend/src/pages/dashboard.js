@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import SubmitIssue from "./submitissue";
 import IssueMap from "../components/issuemap";
-import { FaThumbsUp, FaEdit, FaTrash, FaUser } from "react-icons/fa";
+import { FaThumbsUp, FaEdit, FaTrash, FaUser, FaCheck } from "react-icons/fa";
 import { Container, Row, Col, Card, Button, Spinner, Alert } from "react-bootstrap";
+import SubmitIssue from "./submitissue";
 
 export default function Dashboard() {
   const [issues, setIssues] = useState([]);
@@ -12,18 +12,11 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
-
   const accessToken = localStorage.getItem("access");
   const refreshToken = localStorage.getItem("refresh");
+  const role = localStorage.getItem("role");
 
-  // 🔁 Helper to refresh JWT tokens
   const refreshAccessToken = async () => {
-    if (!refreshToken) {
-      console.warn("No refresh token found. Redirecting to login...");
-      navigate("/login");
-      return null;
-    }
-
     try {
       const res = await fetch(`${API_URL}/api/token/refresh/`, {
         method: "POST",
@@ -31,48 +24,31 @@ export default function Dashboard() {
         body: JSON.stringify({ refresh: refreshToken }),
       });
 
-      if (!res.ok) throw new Error("Failed to refresh token");
+      if (!res.ok) throw new Error("Token refresh failed");
       const data = await res.json();
       localStorage.setItem("access", data.access);
       return data.access;
-    } catch (err) {
-      console.error("Token refresh failed:", err);
-      localStorage.removeItem("access");
-      localStorage.removeItem("refresh");
+    } catch {
       navigate("/login");
       return null;
     }
   };
 
-  // 🔍 Fetch Issues
   const fetchIssues = async (tokenToUse) => {
     try {
       const res = await fetch(`${API_URL}/api/issues/`, {
-        headers: {
-          Authorization: `Bearer ${tokenToUse}`,
-          Accept: "application/json",
-        },
+        headers: { Authorization: `Bearer ${tokenToUse}` },
       });
 
-      // If token expired, refresh it
       if (res.status === 401) {
-        console.warn("Access token expired — refreshing...");
         const newToken = await refreshAccessToken();
         if (newToken) return fetchIssues(newToken);
-        else return;
-      }
-
-      if (!res.ok) {
-        const text = await res.text();
-        console.error("API Error Response:", text);
-        throw new Error(`Failed to fetch issues: ${res.status}`);
       }
 
       const data = await res.json();
       setIssues(Array.isArray(data) ? data : data.results || []);
-    } catch (err) {
-      console.error("Error fetching issues:", err);
-      setError("Failed to fetch issues. Please try again later.");
+    } catch {
+      setError("Failed to load issues.");
     } finally {
       setLoading(false);
     }
@@ -80,73 +56,50 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (accessToken) fetchIssues(accessToken);
-    else {
-      setError("You must be logged in to view the dashboard.");
-      setLoading(false);
-    }
+    else navigate("/login");
   }, []);
 
-  // ❌ Delete Issue
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this issue?")) return;
+  const handleClaim = async (id) => {
     try {
-      const res = await fetch(`${API_URL}/api/issues/${id}/`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-
-      if (res.status === 401) {
-        const newToken = await refreshAccessToken();
-        if (newToken) return handleDelete(id);
-      }
-
-      if (!res.ok) throw new Error("Failed to delete issue");
-      setIssues((prev) => prev.filter((i) => i.id !== id));
-    } catch (err) {
-      console.error("Error deleting issue:", err);
-      setError("Failed to delete the issue.");
-    }
-  };
-
-  // 👍 Like Issue
-  const handleLike = async (id) => {
-    try {
-      const res = await fetch(`${API_URL}/api/issues/${id}/like/`, {
+      const res = await fetch(`${API_URL}/api/issues/${id}/claim/`, {
         method: "POST",
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-
-      if (res.status === 401) {
-        const newToken = await refreshAccessToken();
-        if (newToken) return handleLike(id);
-      }
-
-      if (!res.ok) throw new Error("Failed to update like status.");
-      const updatedIssue = await res.json();
-      setIssues((prev) =>
-        prev.map((issue) =>
-          issue.id === id
-            ? { ...issue, likes_count: updatedIssue.likes_count }
-            : issue
-        )
-      );
-    } catch (err) {
-      console.error("Error liking issue:", err);
-      setError("Failed to update like status.");
+      if (res.ok) fetchIssues(accessToken);
+    } catch {
+      alert("Error claiming issue.");
     }
   };
 
-  // 🆕 Add newly submitted issue instantly
-  const handleIssueSubmitted = (newIssue) => {
-    setIssues((prevIssues) => [newIssue, ...prevIssues]);
+  const handleMarkResolved = async (id) => {
+    try {
+      const res = await fetch(`${API_URL}/api/issues/${id}/`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ status: "resolved" }),
+      });
+      if (res.ok) fetchIssues(accessToken);
+    } catch {
+      alert("Error updating status.");
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this issue?")) return;
+    await fetch(`${API_URL}/api/issues/${id}/`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    setIssues((prev) => prev.filter((i) => i.id !== id));
   };
 
   return (
     <Container className="py-4">
       <Row className="justify-content-between align-items-center mb-4">
-        <Col>
-          <h1 className="h2 fw-bold">📋 Dashboard</h1>
-        </Col>
+        <Col><h1 className="h2 fw-bold">📋 Dashboard</h1></Col>
         <Col xs="auto">
           <Button as={Link} to="/profile" variant="primary">
             <FaUser className="me-2" /> Profile
@@ -156,95 +109,74 @@ export default function Dashboard() {
 
       {error && <Alert variant="danger">{error}</Alert>}
 
-      <Card className="mb-5 shadow-sm">
-        <Card.Body className="p-4">
-          <Card.Title as="h2" className="h4 mb-3">
-            ➕ Submit a New Issue
-          </Card.Title>
-          <SubmitIssue onSubmitted={handleIssueSubmitted} />
-        </Card.Body>
-      </Card>
+      {role === "consumer" && (
+        <Card className="mb-4 shadow-sm">
+          <Card.Body>
+            <h3 className="h5 mb-3">➕ Submit a New Issue</h3>
+            <SubmitIssue onSubmitted={(newIssue) => setIssues([newIssue, ...issues])} />
+          </Card.Body>
+        </Card>
+      )}
 
-      <div className="mb-5">
-        <h2 className="h4 mb-3">🗺️ Issues on Map</h2>
-        <IssueMap issues={issues} />
-      </div>
+      <h2 className="h4 mt-4 mb-3">
+        {role === "provider" ? "🛠️ Issues Needing Your Attention" : "📌 My Issues"}
+      </h2>
 
-      <h2 className="h4 mb-4">📌 My Issues</h2>
       {loading ? (
-        <div className="text-center">
-          <Spinner animation="border" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </Spinner>
-          <p className="mt-2">Loading issues...</p>
-        </div>
+        <Spinner animation="border" />
       ) : issues.length === 0 ? (
-        <Alert variant="info">
-          No issues submitted yet. Be the first to report one!
-        </Alert>
+        <Alert>No issues to display.</Alert>
       ) : (
         <Row>
           {issues.map((issue) => (
             <Col md={6} lg={4} key={issue.id} className="mb-4">
-              <Card className="h-100 shadow-sm">
+              <Card className="shadow-sm h-100">
                 {issue.photo && (
-                  <Card.Img
-                    variant="top"
-                    src={`${API_URL}${issue.photo}`}
-                    style={{ height: "200px", objectFit: "cover" }}
-                  />
+                  <Card.Img variant="top" src={`${API_URL}${issue.photo}`} style={{ height: "200px", objectFit: "cover" }} />
                 )}
                 <Card.Body>
-                  <Card.Title className="fw-bold">{issue.title}</Card.Title>
-                  <Card.Subtitle className="mb-2 text-muted">
-                    <strong>Priority:</strong> {issue.priority} |{" "}
-                    <strong>Status:</strong> {issue.status}
-                  </Card.Subtitle>
-                  <Card.Text as="div" className="small">
-                    <p className="mb-1">
-                      <strong>Reported by:</strong>{" "}
-                      {issue.reporter_name || "Anonymous"}
-                    </p>
-                    <p className="mb-1">
-                      <strong>Location:</strong>{" "}
-                      {issue.location || "Not specified"}
-                    </p>
-                    <p className="text-muted">
-                      ⏰ {new Date(issue.created_at).toLocaleString()}
-                    </p>
-                  </Card.Text>
-                  <p className="mb-3">👍 {issue.likes_count || 0} likes</p>
+                  <Card.Title>{issue.title}</Card.Title>
+                  <p><strong>Status:</strong> {issue.status}</p>
+                  {issue.assigned_to && (
+                    <p><strong>Assigned To:</strong> {issue.assigned_to_username}</p>
+                  )}
 
-                  <div className="d-flex gap-2">
-                    <Button
-                      variant="success"
-                      size="sm"
-                      onClick={() => handleLike(issue.id)}
-                    >
-                      <FaThumbsUp className="me-1" /> Like
-                    </Button>
-                    <Button
-                      as={Link}
-                      to={`/issues/${issue.id}/edit`}
-                      variant="warning"
-                      size="sm"
-                    >
-                      <FaEdit className="me-1" /> Edit
-                    </Button>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={() => handleDelete(issue.id)}
-                    >
-                      <FaTrash className="me-1" /> Delete
-                    </Button>
-                  </div>
+                  {role === "provider" && (
+                    <>
+                      {!issue.assigned_to && (
+                        <Button className="w-100 mb-2" variant="info" onClick={() => handleClaim(issue.id)}>
+                          Claim Issue
+                        </Button>
+                      )}
+                      {issue.assigned_to && issue.status !== "resolved" && (
+                        <Button className="w-100 mb-2" variant="success" onClick={() => handleMarkResolved(issue.id)}>
+                          <FaCheck className="me-2" /> Mark as Resolved
+                        </Button>
+                      )}
+                    </>
+                  )}
+
+                  {role === "consumer" && (
+                    <div className="d-flex gap-2">
+                      <Button variant="warning" size="sm" as={Link} to={`/issues/${issue.id}/edit`}>
+                        <FaEdit /> Edit
+                      </Button>
+                      <Button variant="danger" size="sm" onClick={() => handleDelete(issue.id)}>
+                        <FaTrash /> Delete
+                      </Button>
+                    </div>
+                  )}
                 </Card.Body>
               </Card>
             </Col>
           ))}
         </Row>
       )}
+
+      <div className="mt-5">
+        <h2 className="h4">🗺️ View Issues on Map</h2>
+        <IssueMap issues={issues} />
+      </div>
     </Container>
   );
 }

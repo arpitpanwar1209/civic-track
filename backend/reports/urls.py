@@ -11,6 +11,8 @@ app_name = 'reports'
 router = DefaultRouter()
 router.register(r"issues", IssueViewSet)
 router.register(r"flags", FlagReportViewSet)
+router.register(r"issues", IssueViewSet, basename="issues")  
+router.register(r"flagged", FlagReportViewSet, basename="flagged")
 
 urlpatterns = [
     path('submit/', views.submit_issue, name='submit_issue'),

@@ -1,7 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.contrib.auth import get_user_model
-
+from ml_api.predict import predict_issue_category  # ✅ Make sure this exists
 
 User = get_user_model()
 
@@ -40,7 +40,7 @@ class Issue(models.Model):
     description = models.TextField()
     category = models.CharField(
         max_length=50, choices=CATEGORY_CHOICES, blank=True, null=True
-    )  # ✅ Made optional for AI prediction
+    )
 
     # ---------- Location ----------
     location = models.CharField(max_length=255, blank=True, null=True)
@@ -88,8 +88,7 @@ class Issue(models.Model):
         blank=True
     )
 
-    # ---------- Runtime Field (not stored in DB) ----------
-    _distance = None
+    _distance = None  # Runtime distance (from geolocation)
 
     def __str__(self):
         return f"{self.title} ({self.status})"
@@ -97,7 +96,6 @@ class Issue(models.Model):
     class Meta:
         ordering = ["-created_at"]
 
-    # ✅ Helper methods
     @property
     def likes_count(self):
         return self.likes.count()
@@ -108,18 +106,14 @@ class Issue(models.Model):
 
     @property
     def distance_km(self):
-        """Return computed distance in km (if available)."""
         return round(self._distance, 2) if self._distance is not None else None
 
-    # ✅ Auto AI Prediction
+    # ✅ ML Auto Category Prediction (only when category is blank)
     def save(self, *args, **kwargs):
-        """
-        Automatically predict the issue category using ML if it's not provided.
-        """
         if not self.category and self.description:
-            predicted_category = predict_issue_category(self.description)
-            if predicted_category in dict(self.CATEGORY_CHOICES):
-                self.category = predicted_category
+            predicted = predict_issue_category(self.description)
+            if predicted in dict(self.CATEGORY_CHOICES):
+                self.category = predicted
             else:
                 self.category = "other"
         super().save(*args, **kwargs)

@@ -1,4 +1,3 @@
-# reports/views.py
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
@@ -12,13 +11,10 @@ import math
 
 
 # ---------------------------
-# Helper for haversine distance
+# Helper for Haversine Distance
 # ---------------------------
 def haversine(lat1, lon1, lat2, lon2):
-    """
-    Return distance in kilometers between two (lat, lon) points.
-    """
-    R = 6371  # Earth radius in km
+    R = 6371
     phi1, phi2 = math.radians(float(lat1)), math.radians(float(lat2))
     dphi = math.radians(float(lat2) - float(lat1))
     dlambda = math.radians(float(lon2) - float(lon1))
@@ -28,64 +24,92 @@ def haversine(lat1, lon1, lat2, lon2):
 
 
 # ---------------------------
-# REST API ViewSets (for React)
+# REST API ViewSet (Used by React)
 # ---------------------------
 class IssueViewSet(viewsets.ModelViewSet):
     queryset = Issue.objects.all()
     serializer_class = IssueSerializer
     permission_classes = [permissions.IsAuthenticated]
-   
+
     def get_queryset(self):
-        """
-        Consumers see their own issues,
-        providers/admins see all.
-        Supports ?nearby=lat,lon&radius_km=10
-        """
         user = self.request.user
         qs = Issue.objects.all()
 
-        if hasattr(user, "role") and user.role == "consumer":
+        # ✅ Consumer sees only their issues
+        if user.role == "consumer":
             qs = qs.filter(reported_by=user)
 
-        # ✅ Nearby filtering
+        # ✅ Provider sees only issues in their assigned profession
+        elif user.role == "provider":
+            if user.profession:
+                qs = qs.filter(category__iexact=user.profession.lower())
+            else:
+                qs = Issue.objects.none()
+
+        # ✅ Optional Nearby Filtering
         nearby = self.request.query_params.get("nearby")
         radius_km = self.request.query_params.get("radius_km")
 
         if nearby:
             try:
-                lat_str, lon_str = nearby.split(",")
-                lat, lon = float(lat_str), float(lon_str)
+                lat, lon = map(float, nearby.split(","))
+                result = []
 
-                issues_with_distance = []
                 for issue in qs:
-                    if issue.latitude is not None and issue.longitude is not None:
+                    if issue.latitude and issue.longitude:
                         dist = haversine(lat, lon, issue.latitude, issue.longitude)
-                        issues_with_distance.append((dist, issue))
+                        issue._distance = dist
+                        result.append(issue)
 
-                # Filter by radius if provided
                 if radius_km:
                     r = float(radius_km)
-                    issues_with_distance = [(d, i) for d, i in issues_with_distance if d <= r]
+                    result = [i for i in result if i._distance <= r]
 
-                # Sort by distance
-                issues_with_distance.sort(key=lambda x: x[0])
-
-                # Attach temporary field `_distance` so serializer can pick it up
-                for d, issue in issues_with_distance:
-                    issue._distance = d
-
-                return [i for _, i in issues_with_distance]
+                return sorted(result, key=lambda i: i._distance)
 
             except Exception as e:
-                print("Nearby query error:", e)
+                print("Nearby filter error:", e)
 
         return qs
 
     def perform_create(self, serializer):
-        """Automatically attach logged-in user when creating issue."""
+        """Auto-assign reporter"""
         serializer.save(reported_by=self.request.user)
 
-    # ✅ Like/Unlike toggle with like count
+    # ✅ Provider Claim Issue
+    @action(detail=True, methods=["post"])
+    def claim(self, request, pk=None):
+        issue = self.get_object()
+
+        if request.user.role != "provider":
+            return Response({"detail": "Only providers can claim issues."}, status=403)
+
+        if issue.assigned_to:
+            return Response({"detail": "This issue is already claimed."}, status=400)
+
+        issue.assigned_to = request.user
+        issue.status = "in_progress"
+        issue.save()
+
+        return Response({"detail": "✅ Issue claimed successfully."}, status=200)
+
+    # ✅ Provider Resolve Issue
+    @action(detail=True, methods=["post"])
+    def resolve(self, request, pk=None):
+        issue = self.get_object()
+
+        if request.user.role != "provider":
+            return Response({"detail": "Only providers can mark issues resolved."}, status=403)
+
+        if issue.assigned_to != request.user:
+            return Response({"detail": "You must claim the issue before resolving it."}, status=400)
+
+        issue.status = "resolved"
+        issue.save()
+
+        return Response({"detail": "✅ Issue marked as resolved."}, status=200)
+
+    # ✅ Like / Unlike Toggle
     @action(detail=True, methods=["post"])
     def like(self, request, pk=None):
         issue = self.get_object()
@@ -93,44 +117,36 @@ class IssueViewSet(viewsets.ModelViewSet):
 
         if user in issue.likes.all():
             issue.likes.remove(user)
-            return Response(
-                {"message": "❌ Unliked", "likes_count": issue.likes.count()},
-                status=status.HTTP_200_OK,
-            )
-        else:
-            issue.likes.add(user)
-            return Response(
-                {"message": "✅ Liked", "likes_count": issue.likes.count()},
-                status=status.HTTP_200_OK,
-            )
+            return Response({"message": "❌ Unliked", "likes_count": issue.likes.count()}, status=200)
+
+        issue.likes.add(user)
+        return Response({"message": "✅ Liked", "likes_count": issue.likes.count()}, status=200)
 
 
+# ---------------------------
+# Flag Reporting (Moderation)
+# ---------------------------
 class FlagReportViewSet(viewsets.ModelViewSet):
     queryset = FlagReport.objects.all()
     serializer_class = FlagReportSerializer
     permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        return FlagReport.objects.all()
 
     def perform_create(self, serializer):
         serializer.save(reported_by=self.request.user)
 
 
 # ---------------------------
-# Django Template Views (optional)
+# Admin Moderation Views
 # ---------------------------
-
 @staff_member_required
 def flagged_issues_list(request):
     flagged_issues = FlagReport.objects.select_related("issue", "reported_by").all()
-    return render(
-        request,
-        "reports/flagged_issues_list.html",
-        {"flagged_issues": flagged_issues},
-    )
+    return render(request, "reports/flagged_issues_list.html", {"flagged_issues": flagged_issues})
 
 
+# ---------------------------
+# Legacy Template Views (Optional)
+# ---------------------------
 @login_required
 def submit_issue(request):
     if request.method == "POST":
@@ -145,44 +161,3 @@ def submit_issue(request):
     else:
         form = IssueForm()
     return render(request, "reports/submit_issue.html", {"form": form})
-
-
-@login_required
-def claim_issue(request, issue_id):
-    issue = get_object_or_404(Issue, id=issue_id, assigned_to__isnull=True)
-
-    if hasattr(request.user, "role") and request.user.role == "provider":
-        issue.assigned_to = request.user
-        issue.save()
-
-    return redirect("accounts:dashboard")
-
-
-@login_required
-def flag_issue(request, issue_id):
-    issue = get_object_or_404(Issue, id=issue_id)
-    if request.method == "POST":
-        FlagReport.objects.create(
-            issue=issue,
-            reported_by=request.user,
-            reason=request.POST.get("reason", "other"),
-            comment=request.POST.get("flag_reason", ""),
-        )
-        return redirect("accounts:dashboard")
-    return render(request, "reports/flag_issue.html", {"issue": issue})
-
-
-@staff_member_required
-def resolve_flag(request, flag_id, action):
-    flag = get_object_or_404(FlagReport, pk=flag_id)
-
-    if action == "approve":
-        flag.reviewed = True
-        flag.save()
-    elif action == "reject":
-        flag.delete()
-    elif action == "delete":
-        flag.issue.delete()
-        flag.delete()
-
-    return redirect("reports:flagged_issues_list")

@@ -2,20 +2,20 @@
 import React, { useState, useEffect } from "react";
 import { Container, Row, Col, Card, Button, Spinner, Alert } from "react-bootstrap";
 import { Link } from "react-router-dom";
-import { useTypewriter, Cursor } from "react-simple-typewriter"; // Import for typing effect
-import { FaPaperPlane, FaPhone, FaEnvelope } from "react-icons/fa"; // Icons for new sections
-
-// Import a local stylesheet for custom animations
-import './home.css';
+import { useTypewriter, Cursor } from "react-simple-typewriter";
+import { FaPaperPlane, FaPhone, FaEnvelope } from "react-icons/fa";
+import "./home.css";
 
 export default function Home() {
   const [nearbyIssues, setNearbyIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Animated headline text
+  const role = localStorage.getItem("role");
+  const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
+
   const [headlineText] = useTypewriter({
-    words: ['Report Civic Issues.', 'Get Solutions.', 'Make a Difference.'],
+    words: ["Report Civic Issues.", "Get Solutions.", "Make a Difference."],
     loop: {},
     typeSpeed: 120,
     deleteSpeed: 80,
@@ -23,46 +23,35 @@ export default function Home() {
 
   useEffect(() => {
     if (!navigator.geolocation) {
-      setError("Geolocation is not supported by your browser.");
+      setError("Your browser does not support location access.");
       setLoading(false);
       return;
     }
     navigator.geolocation.getCurrentPosition(handleSuccess, handleError);
   }, []);
 
-  const handleSuccess = (position) => {
-    const { latitude, longitude } = position.coords;
-    const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
+  const handleSuccess = ({ coords }) => {
+    const { latitude, longitude } = coords;
 
-    fetch(`${API_URL}/api/issues/?lat=${latitude}&lon=${longitude}`)
+    fetch(`${API_URL}/api/issues/?nearby=${latitude},${longitude}&radius_km=5`)
       .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch nearby issues.");
+        if (!res.ok) throw new Error();
         return res.json();
       })
-      .then((data) => {
-        setNearbyIssues(Array.isArray(data) ? data : data.results || []);
-      })
-      .catch((err) => {
-        console.error("Fetch error:", err);
-        setError("Could not load issues for your area.");
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+      .then((data) => setNearbyIssues(Array.isArray(data) ? data : data.results || []))
+      .catch(() => setError("Could not load nearby issues."))
+      .finally(() => setLoading(false));
   };
 
-  const handleError = (error) => {
-    console.error("Geolocation error:", error);
-    setError("Please enable location services to see nearby issues.");
+  const handleError = () => {
+    setError("Please enable location access to see nearby issues.");
     setLoading(false);
   };
 
   return (
     <div>
-      {/* 🌆 Hero Section with Moving Text */}
-      <div
-        className="hero-section bg-dark text-white text-center d-flex flex-column justify-content-center align-items-center"
-      >
+      {/* 🌆 HERO SECTION */}
+      <div className="hero-section bg-dark text-white text-center d-flex flex-column justify-content-center align-items-center">
         <div className="hero-overlay"></div>
         <Container style={{ position: "relative", zIndex: 2 }}>
           <h1 className="display-4 fw-bold">
@@ -72,12 +61,28 @@ export default function Home() {
             <Cursor />
           </h1>
           <p className="lead mt-3">
-            Spot a problem? Report potholes, waste, and more directly to your local authorities.
+            Spot a problem? Report potholes, water leaks, garbage issues & more.
           </p>
+
           <div className="mt-4">
-            <Button as={Link} to="/dashboard" variant="warning" size="lg" className="me-3 pulse-button">
-              🚀 Report a Problem
-            </Button>
+            {role === "consumer" && (
+              <Button as={Link} to="/dashboard" variant="warning" size="lg" className="me-3 pulse-button">
+                🚀 Report an Issue
+              </Button>
+            )}
+
+            {role === "provider" && (
+              <Button as={Link} to="/dashboard" variant="warning" size="lg" className="me-3 pulse-button">
+                🛠️ View Assigned Issues
+              </Button>
+            )}
+
+            {!role && (
+              <Button as={Link} to="/login" variant="warning" size="lg" className="me-3 pulse-button">
+                🔐 Login to Get Started
+              </Button>
+            )}
+
             <Button as={Link} to="/dashboard" variant="outline-light" size="lg">
               📋 View Reports
             </Button>
@@ -85,19 +90,19 @@ export default function Home() {
         </Container>
       </div>
 
-      {/* ✨ Nearby Issues Section ✨ */}
+      {/* 📍 NEARBY ISSUES */}
       <Container className="py-5">
         <h2 className="text-center fw-bold mb-5">📍 Issues Near You</h2>
-        {/* Same logic as before: loading, error, no issues, or issue cards */}
+
         {loading ? (
           <div className="text-center">
             <Spinner animation="border" />
-            <p className="mt-2">Fetching your location and nearby issues...</p>
+            <p>Fetching location...</p>
           </div>
         ) : error ? (
           <Alert variant="warning">{error}</Alert>
         ) : nearbyIssues.length === 0 ? (
-          <Alert variant="info">No civic issues reported in your area. Be the first!</Alert>
+          <Alert variant="info">No issues reported nearby yet.</Alert>
         ) : (
           <Row>
             {nearbyIssues.slice(0, 3).map((issue) => (
@@ -106,17 +111,17 @@ export default function Home() {
                   {issue.photo && (
                     <Card.Img
                       variant="top"
-                      src={`${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}${issue.photo}`}
+                      src={`${API_URL}${issue.photo}`}
                       className="issue-card-img"
                     />
                   )}
                   <Card.Body>
                     <Card.Title className="fw-bold">{issue.title}</Card.Title>
-                    <Card.Subtitle className="mb-2 text-muted small">
+                    <Card.Subtitle className="text-muted small mb-2">
                       Status: {issue.status}
                     </Card.Subtitle>
-                    <Card.Text>
-                      {issue.description.substring(0, 100)}...
+                    <Card.Text className="small">
+                      {issue.description?.substring(0, 100)}...
                     </Card.Text>
                     <Button as={Link} to="/dashboard" variant="primary" size="sm">
                       View Details
@@ -128,39 +133,39 @@ export default function Home() {
           </Row>
         )}
       </Container>
-      
-      {/* 📞 NEW: Contact Authorities Section */}
+
+      {/* 📞 CONTACT SECTION */}
       <div className="bg-light">
         <Container className="py-5 text-center">
-          <h2 className="fw-bold mb-4">Need Urgent Assistance?</h2>
+          <h2 className="fw-bold mb-4">Need Urgent Help?</h2>
           <p className="lead mb-4">
-            For emergencies or to contact your local municipal office directly, use the links below.
+            Use these resources for emergency or municipal support.
           </p>
           <Row>
-            <Col md={4} className="mb-3">
-              <Card as="a" href="https://portal.uk.gov.in/" target="_blank" className="text-decoration-none contact-card">
+            <Col md={4}>
+              <Card className="contact-card">
                 <Card.Body>
                   <FaPaperPlane size={30} className="mb-2" />
-                  <h5 className="fw-bold">Official Portal</h5>
-                  <p className="text-muted">Visit the Uttarakhand government portal.</p>
+                  <h5 className="fw-bold">Municipal Portal</h5>
+                  <p>Visit your local municipal services website.</p>
                 </Card.Body>
               </Card>
             </Col>
-            <Col md={4} className="mb-3">
-              <Card as="a" href="tel:112" className="text-decoration-none contact-card">
+            <Col md={4}>
+              <Card className="contact-card">
                 <Card.Body>
                   <FaPhone size={30} className="mb-2" />
                   <h5 className="fw-bold">Emergency Helpline</h5>
-                  <p className="text-muted">Dial the national emergency number.</p>
+                  <p>Call 112 for urgent help.</p>
                 </Card.Body>
               </Card>
             </Col>
-            <Col md={4} className="mb-3">
-              <Card as="a" href="mailto:support@example.com" className="text-decoration-none contact-card">
+            <Col md={4}>
+              <Card className="contact-card">
                 <Card.Body>
                   <FaEnvelope size={30} className="mb-2" />
                   <h5 className="fw-bold">Email Support</h5>
-                  <p className="text-muted">Send an email for non-urgent queries.</p>
+                  <p>support@civictrack.org</p>
                 </Card.Body>
               </Card>
             </Col>
