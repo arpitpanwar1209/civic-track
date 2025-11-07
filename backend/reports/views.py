@@ -1,11 +1,9 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
 from django.contrib.admin.views.decorators import staff_member_required
-from rest_framework import viewsets, permissions, status
+from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Issue, FlagReport
-from .forms import IssueForm
 from .serializers import IssueSerializer, FlagReportSerializer
 import math
 
@@ -24,6 +22,22 @@ def haversine(lat1, lon1, lat2, lon2):
 
 
 # ---------------------------
+# Simple AI Category Predictor
+# ---------------------------
+def predict_issue_category(description: str) -> str:
+    text = description.lower()
+    if any(w in text for w in ["road", "pothole", "street", "footpath"]):
+        return "road"
+    if any(w in text for w in ["garbage", "trash", "waste", "dump"]):
+        return "garbage"
+    if any(w in text for w in ["water", "pipeline", "tap", "leak"]):
+        return "water"
+    if any(w in text for w in ["electric", "wire", "transformer", "power"]):
+        return "electricity"
+    return "other"
+
+
+# ---------------------------
 # REST API ViewSet (Used by React)
 # ---------------------------
 class IssueViewSet(viewsets.ModelViewSet):
@@ -35,18 +49,18 @@ class IssueViewSet(viewsets.ModelViewSet):
         user = self.request.user
         qs = Issue.objects.all()
 
-        # ✅ Consumer sees only their issues
+        # Consumer sees only their issues
         if user.role == "consumer":
             qs = qs.filter(reported_by=user)
 
-        # ✅ Provider sees only issues in their assigned profession
+        # Provider sees only issues in their category
         elif user.role == "provider":
             if user.profession:
                 qs = qs.filter(category__iexact=user.profession.lower())
             else:
                 qs = Issue.objects.none()
 
-        # ✅ Optional Nearby Filtering
+        # Optional Geo Filter
         nearby = self.request.query_params.get("nearby")
         radius_km = self.request.query_params.get("radius_km")
 
@@ -62,35 +76,19 @@ class IssueViewSet(viewsets.ModelViewSet):
                         result.append(issue)
 
                 if radius_km:
-                    r = float(radius_km)
-                    result = [i for i in result if i._distance <= r]
+                    result = [i for i in result if i._distance <= float(radius_km)]
 
                 return sorted(result, key=lambda i: i._distance)
 
-            except Exception as e:
-                print("Nearby filter error:", e)
+            except:
+                pass
 
         return qs
-    
-
-def predict_issue_category(description: str) -> str:
-    
-    text = description.lower()
-    if any(w in text for w in ["road", "pothole", "street"]):
-        return "road"
-    if any(w in text for w in ["garbage", "trash", "waste"]):
-        return "garbage"
-    if any(w in text for w in ["water", "pipeline", "tap"]):
-        return "water"
-    if any(w in text for w in ["electric", "wire", "transformer", "power"]):
-        return "electricity"
-    return "other"
 
     def perform_create(self, serializer):
-        """Auto-assign reporter"""
         serializer.save(reported_by=self.request.user)
 
-    # ✅ Provider Claim Issue
+    # Provider → Claim Issue
     @action(detail=True, methods=["post"])
     def claim(self, request, pk=None):
         issue = self.get_object()
@@ -99,7 +97,7 @@ def predict_issue_category(description: str) -> str:
             return Response({"detail": "Only providers can claim issues."}, status=403)
 
         if issue.assigned_to:
-            return Response({"detail": "This issue is already claimed."}, status=400)
+            return Response({"detail": "Issue already claimed."}, status=400)
 
         issue.assigned_to = request.user
         issue.status = "in_progress"
@@ -107,23 +105,23 @@ def predict_issue_category(description: str) -> str:
 
         return Response({"detail": "✅ Issue claimed successfully."}, status=200)
 
-    # ✅ Provider Resolve Issue
+    # Provider → Mark Resolved
     @action(detail=True, methods=["post"])
     def resolve(self, request, pk=None):
         issue = self.get_object()
 
         if request.user.role != "provider":
-            return Response({"detail": "Only providers can mark issues resolved."}, status=403)
+            return Response({"detail": "Only providers can resolve issues."}, status=403)
 
         if issue.assigned_to != request.user:
-            return Response({"detail": "You must claim the issue before resolving it."}, status=400)
+            return Response({"detail": "You must claim the issue first."}, status=400)
 
         issue.status = "resolved"
         issue.save()
 
         return Response({"detail": "✅ Issue marked as resolved."}, status=200)
 
-    # ✅ Like / Unlike Toggle
+    # Like / Unlike Toggle
     @action(detail=True, methods=["post"])
     def like(self, request, pk=None):
         issue = self.get_object()
@@ -138,7 +136,7 @@ def predict_issue_category(description: str) -> str:
 
 
 # ---------------------------
-# Flag Reporting (Moderation)
+# Flag Reporting API (Moderation)
 # ---------------------------
 class FlagReportViewSet(viewsets.ModelViewSet):
     queryset = FlagReport.objects.all()
@@ -150,28 +148,9 @@ class FlagReportViewSet(viewsets.ModelViewSet):
 
 
 # ---------------------------
-# Admin Moderation Views
+# Admin Moderation Panel
 # ---------------------------
 @staff_member_required
 def flagged_issues_list(request):
     flagged_issues = FlagReport.objects.select_related("issue", "reported_by").all()
     return render(request, "reports/flagged_issues_list.html", {"flagged_issues": flagged_issues})
-
-
-# ---------------------------
-# Legacy Template Views (Optional)
-# ---------------------------
-@login_required
-def submit_issue(request):
-    if request.method == "POST":
-        form = IssueForm(request.POST, request.FILES)
-        if form.is_valid():
-            issue = form.save(commit=False)
-            issue.reported_by = request.user
-            if request.POST.get("is_anonymous"):
-                issue.is_anonymous = True
-            issue.save()
-            return redirect("accounts:dashboard")
-    else:
-        form = IssueForm()
-    return render(request, "reports/submit_issue.html", {"form": form})

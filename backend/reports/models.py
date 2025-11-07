@@ -1,7 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.contrib.auth import get_user_model
-
+from ml.predict import predict_issue_category
 User = get_user_model()
 
 

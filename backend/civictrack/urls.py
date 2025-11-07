@@ -35,10 +35,6 @@ urlpatterns = [
     # 🧪 DRF Browsable API Auth (optional, for debugging)
     path("api/auth/", include("rest_framework.urls")),
 
-    # 🧱 Reports App (Django templates, optional)
-    path("issues/", include("reports.urls")),
-
-    path("api/ml/", include("ml_api.urls")),
 
 ]
 

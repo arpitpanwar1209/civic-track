@@ -56,8 +56,7 @@ INSTALLED_APPS = [
     'accounts',
     'moderation',
     'reports',
-    'ml_api',
-    'ml',  # ✅ Ensure this comma exists!
+    'ml',  
 
     # Third-party
     'rest_framework',
