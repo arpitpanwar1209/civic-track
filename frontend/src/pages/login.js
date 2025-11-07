@@ -19,14 +19,18 @@ function Login() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Password Reset Modal
   const [showModal, setShowModal] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetMsg, setResetMsg] = useState("");
+
   const navigate = useNavigate();
 
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
+  // ---------------- LOGIN ----------------
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -34,7 +38,7 @@ function Login() {
     setSubmitting(true);
 
     try {
-      const res = await fetch(`${API_URL}/api/accounts/login/`, {
+      const res = await fetch(`${API_URL}/api/token/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -49,7 +53,7 @@ function Login() {
         localStorage.setItem("role", data.role);
 
         setSuccess("✅ Login successful! Redirecting...");
-        setTimeout(() => navigate("/dashboard"), 1500);
+        setTimeout(() => navigate("/dashboard"), 1200);
       } else {
         setError(data.detail || "Invalid username or password.");
       }
@@ -61,6 +65,7 @@ function Login() {
     }
   };
 
+  // ---------------- PASSWORD RESET ----------------
   const handlePasswordReset = async (e) => {
     e.preventDefault();
     setResetMsg("");
@@ -69,18 +74,19 @@ function Login() {
       const res = await fetch(`${API_URL}/api/accounts/password-reset/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: resetEmail }),
+        body: JSON.stringify({ email: resetEmail }), // ✅ FIXED Line
       });
 
       const data = await res.json();
+
       if (res.ok) {
         setResetMsg("✅ Password reset link sent to your email.");
       } else {
-        setResetMsg(data.detail || "Failed to send reset email.");
+        setResetMsg(data.detail || "⚠️ Failed to send password reset email.");
       }
     } catch (err) {
       console.error(err);
-      setResetMsg("⚠️ Error sending reset link.");
+      setResetMsg("⚠️ Server error. Please try again.");
     }
   };
 
@@ -98,41 +104,40 @@ function Login() {
               {success && <Alert variant="success">{success}</Alert>}
               {error && <Alert variant="danger">{error}</Alert>}
 
+              {/* Login Form */}
               <Form onSubmit={handleSubmit}>
-                <Form.Group className="mb-3" controlId="formUsername">
+                <Form.Group className="mb-3">
                   <Form.Label>Username</Form.Label>
                   <Form.Control
                     type="text"
                     name="username"
-                    placeholder="Enter your username"
                     value={formData.username}
                     onChange={handleChange}
+                    placeholder="Enter username"
                     required
                   />
                 </Form.Group>
 
-                <Form.Group className="mb-4" controlId="formPassword">
+                <Form.Group className="mb-4">
                   <Form.Label>Password</Form.Label>
                   <Form.Control
                     type="password"
                     name="password"
-                    placeholder="Enter your password"
                     value={formData.password}
                     onChange={handleChange}
+                    placeholder="Enter password"
                     required
                   />
                 </Form.Group>
 
                 <div className="d-grid">
-                  <Button variant="primary" type="submit" disabled={submitting}>
+                  <Button type="submit" variant="primary" disabled={submitting}>
                     {submitting ? (
                       <>
                         <Spinner
                           as="span"
                           animation="border"
                           size="sm"
-                          role="status"
-                          aria-hidden="true"
                           className="me-2"
                         />
                         Logging In...
@@ -144,12 +149,13 @@ function Login() {
                 </div>
               </Form>
 
+              {/* Reset Password Link */}
               <div className="text-center mt-3">
                 <small>
                   Forgot your password?{" "}
                   <Button
                     variant="link"
-                    className="p-0"
+                    className="p-0 text-decoration-underline"
                     onClick={() => setShowModal(true)}
                   >
                     Reset here
@@ -157,6 +163,7 @@ function Login() {
                 </small>
               </div>
 
+              {/* Signup Link */}
               <div className="text-center mt-2">
                 <small>
                   Don't have an account? <Link to="/signup">Sign Up</Link>
@@ -167,14 +174,14 @@ function Login() {
         </Col>
       </Row>
 
-      {/* 🔹 Password Reset Modal */}
+      {/* Password Reset Modal */}
       <Modal show={showModal} onHide={() => setShowModal(false)} centered>
         <Modal.Header closeButton>
-          <Modal.Title>Reset Your Password</Modal.Title>
+          <Modal.Title>Reset Password</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form onSubmit={handlePasswordReset}>
-            <Form.Group className="mb-3">
+            <Form.Group>
               <Form.Label>Email Address</Form.Label>
               <Form.Control
                 type="email"
@@ -184,11 +191,20 @@ function Login() {
                 required
               />
             </Form.Group>
-            <Button variant="primary" type="submit" className="w-100">
+
+            <Button type="submit" variant="primary" className="w-100 mt-3">
               Send Reset Link
             </Button>
           </Form>
-          {resetMsg && <Alert className="mt-3">{resetMsg}</Alert>}
+
+          {resetMsg && (
+            <Alert
+              className="mt-3"
+              variant={resetMsg.startsWith("✅") ? "success" : "danger"}
+            >
+              {resetMsg}
+            </Alert>
+          )}
         </Modal.Body>
       </Modal>
     </Container>

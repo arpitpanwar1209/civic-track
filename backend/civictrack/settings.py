@@ -10,23 +10,24 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# --- Load local .env for development ---
+# Load local .env only in dev (Render uses environment variables)
 load_dotenv(BASE_DIR / ".env.development")
 
-# --- Basic Security ---
+# ---------------- Security ----------------
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-secret")
 DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() in ("1", "true", "yes")
 
-ALLOWED_HOSTS = os.getenv(
-    "DJANGO_ALLOWED_HOSTS",
-    "localhost,127.0.0.1,civic-track-v2k5.onrender.com"
-).split(",")
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "civic-track-v2k5.onrender.com",
+]
 
-# --- Public URLs ---
+# Frontend & Backend URLs
 VERCEL_FRONTEND_URL = "https://civic-track-phi.vercel.app"
 RENDER_BACKEND_URL = "https://civic-track-v2k5.onrender.com"
 
-# --- CORS CONFIG ---
+# ---------------- CORS ----------------
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
@@ -34,15 +35,15 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = ["*"]
+CORS_ALLOW_METHODS = ["*"]
 
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
     VERCEL_FRONTEND_URL,
     RENDER_BACKEND_URL,
 ]
 
-# --- Apps ---
+# ---------------- Apps ----------------
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -56,7 +57,7 @@ INSTALLED_APPS = [
     'moderation',
     'reports',
     'ml_api',
-    'ml',
+    'ml',  # ✅ Ensure this comma exists!
 
     # Third-party
     'rest_framework',
@@ -64,10 +65,10 @@ INSTALLED_APPS = [
     'corsheaders',
 ]
 
-# --- Middleware ---
+# ---------------- Middleware ----------------
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    "corsheaders.middleware.CorsMiddleware", 
+    "corsheaders.middleware.CorsMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -76,7 +77,6 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# --- URLs & Templates ---
 ROOT_URLCONF = 'civictrack.urls'
 
 TEMPLATES = [
@@ -96,24 +96,22 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'civictrack.wsgi.application'
 
-# --- Database (Local + Render Auto Detect) ---
+# ---------------- Database ----------------
 DATABASES = {
     "default": dj_database_url.config(
-        default=f"postgres://arpit:Gurjar@1209@localhost:5432/civictrack",
+        default="postgres://arpit:Gurjar%401209@localhost:5432/civictrack",  # ✅ encoded @
         conn_max_age=600,
         ssl_require=not DEBUG,
     )
 }
 
-# --- Passwords ---
+# ---------------- Auth ----------------
 AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# --- DRF / JWT ---
+AUTH_USER_MODEL = 'accounts.CustomUser'
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -126,13 +124,7 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-# --- Localization ---
-LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'Asia/Kolkata'
-USE_I18N = True
-USE_TZ = True
-
-# --- Static & Media ---
+# ---------------- Static & Media ----------------
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
@@ -140,13 +132,7 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / "media"
 
-# --- Custom User ---
-AUTH_USER_MODEL = 'accounts.CustomUser'
-
-LOGIN_REDIRECT_URL = "/dashboard"
-LOGOUT_REDIRECT_URL = "/"
-
-# --- Email (Works for Password Reset) ---
+# ---------------- Email SMTP ----------------
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
@@ -154,3 +140,4 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
