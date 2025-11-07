@@ -1,7 +1,6 @@
 from django.db import models
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from ml_api.predict import predict_issue_category  # ✅ Make sure this exists
 
 User = get_user_model()
 

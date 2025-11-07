@@ -71,6 +71,20 @@ class IssueViewSet(viewsets.ModelViewSet):
                 print("Nearby filter error:", e)
 
         return qs
+    
+
+def predict_issue_category(description: str) -> str:
+    
+    text = description.lower()
+    if any(w in text for w in ["road", "pothole", "street"]):
+        return "road"
+    if any(w in text for w in ["garbage", "trash", "waste"]):
+        return "garbage"
+    if any(w in text for w in ["water", "pipeline", "tap"]):
+        return "water"
+    if any(w in text for w in ["electric", "wire", "transformer", "power"]):
+        return "electricity"
+    return "other"
 
     def perform_create(self, serializer):
         """Auto-assign reporter"""
