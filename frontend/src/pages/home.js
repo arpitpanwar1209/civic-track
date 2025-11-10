@@ -66,26 +66,27 @@ export default function Home() {
 
           <div className="mt-4">
             {role === "consumer" && (
-              <Button as={Link} to="/dashboard" variant="warning" size="lg" className="me-3 pulse-button">
-                🚀 Report an Issue
-              </Button>
+              <>
+                <Button as={Link} to="/dashboard" variant="warning" size="lg" className="me-3 pulse-button">
+                  🚀 Report an Issue
+                </Button>
+                <Button as={Link} to="/dashboard" variant="outline-light" size="lg">
+                  📋 View My Reports
+                </Button>
+              </>
             )}
 
             {role === "provider" && (
-              <Button as={Link} to="/dashboard" variant="warning" size="lg" className="me-3 pulse-button">
-                🛠️ View Assigned Issues
+              <Button as={Link} to="/dashboard" variant="info" size="lg" className="pulse-button">
+                🛠️ View Issues to Resolve
               </Button>
             )}
 
             {!role && (
-              <Button as={Link} to="/login" variant="warning" size="lg" className="me-3 pulse-button">
+              <Button as={Link} to="/login" variant="warning" size="lg" className="pulse-button">
                 🔐 Login to Get Started
               </Button>
             )}
-
-            <Button as={Link} to="/dashboard" variant="outline-light" size="lg">
-              📋 View Reports
-            </Button>
           </div>
         </Container>
       </div>
@@ -138,9 +139,7 @@ export default function Home() {
       <div className="bg-light">
         <Container className="py-5 text-center">
           <h2 className="fw-bold mb-4">Need Urgent Help?</h2>
-          <p className="lead mb-4">
-            Use these resources for emergency or municipal support.
-          </p>
+          <p className="lead mb-4">Use these resources for emergency or municipal support.</p>
           <Row>
             <Col md={4}>
               <Card className="contact-card">

@@ -27,6 +27,7 @@ export async function getAccessToken() {
 
     if (res.ok) {
       const data = await res.json();
+    }
       localStorage.setItem("access", data.access);
       access = data.access;
     } else {
@@ -37,4 +38,3 @@ export async function getAccessToken() {
   }
 
   return access;
-}

@@ -20,7 +20,6 @@ function Login() {
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Password Reset Modal
   const [showModal, setShowModal] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetMsg, setResetMsg] = useState("");
@@ -38,6 +37,7 @@ function Login() {
     setSubmitting(true);
 
     try {
+      // Step 1: Request Access & Refresh Tokens
       const res = await fetch(`${API_URL}/api/token/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -46,20 +46,36 @@ function Login() {
 
       const data = await res.json();
 
-      if (res.ok) {
-        localStorage.setItem("access", data.access);
-        localStorage.setItem("refresh", data.refresh);
-        localStorage.setItem("username", data.username);
-        localStorage.setItem("role", data.role);
+      if (!res.ok) {
+        setError(data.detail || "Invalid login credentials.");
+        setSubmitting(false);
+        return;
+      }
+
+      // Store tokens
+      localStorage.setItem("access", data.access);
+      localStorage.setItem("refresh", data.refresh);
+
+      // Step 2: Get profile with token
+      const profileRes = await fetch(`${API_URL}/api/accounts/me/`, {
+        headers: { Authorization: `Bearer ${data.access}` },
+      });
+
+      const profile = await profileRes.json();
+
+      if (profileRes.ok) {
+        localStorage.setItem("username", profile.username);
+        localStorage.setItem("role", profile.role);
+        localStorage.setItem("profession", profile.profession || "");
 
         setSuccess("✅ Login successful! Redirecting...");
         setTimeout(() => navigate("/dashboard"), 1200);
       } else {
-        setError(data.detail || "Invalid username or password.");
+        setError("Failed to load profile. Try again.");
       }
     } catch (err) {
-      console.error(err);
-      setError("Something went wrong. Please try again.");
+      console.error("Login error:", err);
+      setError("Server connection issue. Try again.");
     } finally {
       setSubmitting(false);
     }
@@ -74,7 +90,7 @@ function Login() {
       const res = await fetch(`${API_URL}/api/accounts/password-reset/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: resetEmail }), // ✅ FIXED Line
+        body: JSON.stringify({ email: resetEmail }),
       });
 
       const data = await res.json();
@@ -82,7 +98,7 @@ function Login() {
       if (res.ok) {
         setResetMsg("✅ Password reset link sent to your email.");
       } else {
-        setResetMsg(data.detail || "⚠️ Failed to send password reset email.");
+        setResetMsg(data.detail || "⚠️ Unable to send reset email.");
       }
     } catch (err) {
       console.error(err);
@@ -104,7 +120,6 @@ function Login() {
               {success && <Alert variant="success">{success}</Alert>}
               {error && <Alert variant="danger">{error}</Alert>}
 
-              {/* Login Form */}
               <Form onSubmit={handleSubmit}>
                 <Form.Group className="mb-3">
                   <Form.Label>Username</Form.Label>
@@ -149,7 +164,6 @@ function Login() {
                 </div>
               </Form>
 
-              {/* Reset Password Link */}
               <div className="text-center mt-3">
                 <small>
                   Forgot your password?{" "}
@@ -163,7 +177,6 @@ function Login() {
                 </small>
               </div>
 
-              {/* Signup Link */}
               <div className="text-center mt-2">
                 <small>
                   Don't have an account? <Link to="/signup">Sign Up</Link>
@@ -174,7 +187,6 @@ function Login() {
         </Col>
       </Row>
 
-      {/* Password Reset Modal */}
       <Modal show={showModal} onHide={() => setShowModal(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>Reset Password</Modal.Title>
@@ -200,7 +212,7 @@ function Login() {
           {resetMsg && (
             <Alert
               className="mt-3"
-              variant={resetMsg.startsWith("✅") ? "success" : "danger"}
+              variant={resetMsg.includes("✅") ? "success" : "danger"}
             >
               {resetMsg}
             </Alert>
