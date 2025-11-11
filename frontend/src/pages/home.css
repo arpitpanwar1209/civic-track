@@ -1,52 +1,75 @@
 /* frontend/src/pages/Home.css */
 
-/* Hero Section Styling */
+/* Smooth page fade-in */
+body {
+  animation: fadeIn 0.5s ease-in forwards;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Hero Section */
 .hero-section {
   height: 500px;
   position: relative;
   background-image: url('https://images.unsplash.com/photo-1561489427-3275f6b35fcb?auto=format&fit=crop&w=1400&q=80');
   background-size: cover;
   background-position: center;
-  background-attachment: fixed; /* Parallax effect */
+  background-attachment: fixed;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
 }
 
+/* Mobile-friendly parallax fallback */
+@media (max-width: 768px) {
+  .hero-section {
+    background-attachment: scroll;
+  }
+}
+
+/* Dark overlay */
 .hero-overlay {
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  background-color: rgba(0, 0, 0, 0.6);
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
 }
 
-/* Pulsing Button Animation */
+/* Text layered above overlay */
+.hero-content {
+  position: relative;
+  z-index: 2;
+  color: #fff;
+}
+
+/* Pulsing CTA Button */
 .pulse-button {
-  animation: pulse 2s infinite;
+  animation: pulse 1.8s infinite ease-out;
 }
 
 @keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(255, 193, 7, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
-  }
+  0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); }
+  70% { box-shadow: 0 0 0 18px rgba(255, 193, 7, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
 }
 
 /* Card hover effect */
 .issue-card, .contact-card {
-  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+  border-radius: 12px;
 }
 
 .issue-card:hover, .contact-card:hover {
-  transform: translateY(-10px);
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1) !important;
+  transform: translateY(-12px);
+  box-shadow: 0px 20px 40px rgba(0, 0, 0, 0.15) !important;
 }
 
+/* Image uniform crop */
 .issue-card-img {
   height: 200px;
   object-fit: cover;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
 }

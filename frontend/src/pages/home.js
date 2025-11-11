@@ -57,6 +57,7 @@ export default function Home() {
       {/* 🌆 HERO SECTION */}
       <div className="hero-section bg-dark text-white text-center d-flex flex-column justify-content-center align-items-center">
         <div className="hero-overlay"></div>
+
         <Container style={{ position: "relative", zIndex: 2 }}>
           <h1 className="display-4 fw-bold">
             Your City, Your Voice.
@@ -64,27 +65,24 @@ export default function Home() {
             <span>{headlineText}</span>
             <Cursor />
           </h1>
+
           <p className="lead mt-3">
             Spot a problem? Report potholes, water leaks, garbage issues & more.
           </p>
 
           <div className="mt-4">
+
             {role === "consumer" && (
               <>
                 <Button as={Link} to="/dashboard" variant="warning" size="lg" className="me-3 pulse-button">
                   🚀 Report an Issue
                 </Button>
+
                 <Button as={Link} to="/dashboard" variant="outline-light" size="lg">
                   📋 View My Reports
                 </Button>
               </>
             )}
-
-            
-<Container className="py-4">
-  <BackButton />
-  {/* rest of content */}
-</Container>
 
             {role === "provider" && (
               <Button as={Link} to="/dashboard" variant="info" size="lg" className="pulse-button">
@@ -100,6 +98,11 @@ export default function Home() {
           </div>
         </Container>
       </div>
+
+      {/* Back Navigation */}
+      <Container className="mt-3">
+        <BackButton />
+      </Container>
 
       {/* 📍 NEARBY ISSUES */}
       <Container className="py-5">
@@ -152,30 +155,26 @@ export default function Home() {
           <p className="lead mb-4">Use these resources for emergency or municipal support.</p>
           <Row>
             <Col md={4}>
-              <Card className="contact-card">
-                <Card.Body>
-                  <FaPaperPlane size={30} className="mb-2" />
-                  <h5 className="fw-bold">Municipal Portal</h5>
-                  <p>Visit your local municipal services website.</p>
-                </Card.Body>
+              <Card className="contact-card p-3">
+                <FaPaperPlane size={30} className="mb-2" />
+                <h5 className="fw-bold">Municipal Portal</h5>
+                <p>Visit your local municipal services website.</p>
               </Card>
             </Col>
+
             <Col md={4}>
-              <Card className="contact-card">
-                <Card.Body>
-                  <FaPhone size={30} className="mb-2" />
-                  <h5 className="fw-bold">Emergency Helpline</h5>
-                  <p>Call 112 for urgent help.</p>
-                </Card.Body>
+              <Card className="contact-card p-3">
+                <FaPhone size={30} className="mb-2" />
+                <h5 className="fw-bold">Emergency Helpline</h5>
+                <p>Call 112 for urgent help.</p>
               </Card>
             </Col>
+
             <Col md={4}>
-              <Card className="contact-card">
-                <Card.Body>
-                  <FaEnvelope size={30} className="mb-2" />
-                  <h5 className="fw-bold">Email Support</h5>
-                  <p>support@civictrack.org</p>
-                </Card.Body>
+              <Card className="contact-card p-3">
+                <FaEnvelope size={30} className="mb-2" />
+                <h5 className="fw-bold">Email Support</h5>
+                <p>support@civictrack.org</p>
               </Card>
             </Col>
           </Row>

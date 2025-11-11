@@ -19,7 +19,6 @@ import {
 } from "react-bootstrap";
 import { FaArrowLeft } from "react-icons/fa";
 
-// 1. ADD THIS LINE
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
 // Fix leaflet marker icons
@@ -29,12 +28,6 @@ L.Icon.Default.mergeOptions({
   iconUrl: require("leaflet/dist/images/marker-icon.png"),
   shadowUrl: require("leaflet/dist/images/marker-shadow.png"),
 });
-
-
-<Container className="py-4">
-  <BackButton />
-  {/* rest of content */}
-</Container>
 
 export default function EditIssue() {
   const { id } = useParams();
@@ -49,6 +42,7 @@ export default function EditIssue() {
     latitude: 0,
     longitude: 0,
   });
+
   const [photo, setPhoto] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
@@ -56,9 +50,8 @@ export default function EditIssue() {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Fetch issue details
+  // Load issue data
   useEffect(() => {
-    // 2. CHANGE THIS LINE
     fetch(`${API_URL}/api/issues/${id}/`, {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -76,15 +69,11 @@ export default function EditIssue() {
           longitude: data.longitude || 0,
         });
       })
-      .catch((err) => {
-        setMessage({ type: "danger", text: err.message });
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+      .catch((err) => setMessage({ type: "danger", text: err.message }))
+      .finally(() => setLoading(false));
   }, [id, token]);
 
-  // Draggable marker on map
+  // Map marker handler
   function DraggableMarker() {
     const map = useMapEvents({
       click(e) {
@@ -93,10 +82,9 @@ export default function EditIssue() {
     });
 
     useEffect(() => {
-        // Fly to the new coordinates when they change
-        if (formData.latitude && formData.longitude) {
-            map.flyTo([formData.latitude, formData.longitude], map.getZoom());
-        }
+      if (formData.latitude && formData.longitude) {
+        map.flyTo([formData.latitude, formData.longitude], map.getZoom());
+      }
     }, [formData.latitude, formData.longitude, map]);
 
     return (
@@ -115,7 +103,7 @@ export default function EditIssue() {
     );
   }
 
-  // Search location with OpenStreetMap (This URL is correct, do not change)
+  // Search Location
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!searchQuery) return;
@@ -136,14 +124,13 @@ export default function EditIssue() {
     setSearchResults([]);
   };
 
-  // Save updated issue
+  // Submit changes
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     setMessage({ type: "", text: "" });
 
     const body = new FormData();
-    // Use PATCH to only send updated fields
     body.append("title", formData.title);
     body.append("description", formData.description);
     body.append("category", formData.category);
@@ -153,25 +140,21 @@ export default function EditIssue() {
     if (photo) body.append("photo", photo);
 
     try {
-        // 3. CHANGE THIS LINE
-        const res = await fetch(`${API_URL}/api/issues/${id}/`, {
-            method: "PATCH",
-            headers: { Authorization: `Bearer ${token}` },
-            body,
-        });
+      const res = await fetch(`${API_URL}/api/issues/${id}/`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body,
+      });
 
-        if (!res.ok) {
-            const error = await res.json();
-            throw new Error(error.detail || "Something went wrong");
-        }
-        
-        setMessage({ type: "success", text: "✅ Issue updated successfully!" });
-        setTimeout(() => navigate("/dashboard"), 1500);
+      if (!res.ok) throw new Error("Something went wrong");
+
+      setMessage({ type: "success", text: "✅ Issue updated successfully!" });
+      setTimeout(() => navigate("/dashboard"), 1200);
 
     } catch (err) {
-        setMessage({ type: "danger", text: `❌ Failed: ${err.message}` });
+      setMessage({ type: "danger", text: `❌ Failed: ${err.message}` });
     } finally {
-        setSubmitting(false);
+      setSubmitting(false);
     }
   };
 
@@ -186,107 +169,111 @@ export default function EditIssue() {
 
   return (
     <Container className="my-4">
-        <Card className="shadow-sm">
-            <Card.Header as="h2" className="d-flex justify-content-between align-items-center">
-                ✏️ Edit Issue
-                <Button as={Link} to="/dashboard" variant="outline-secondary" size="sm">
-                    <FaArrowLeft className="me-2" /> Back to Dashboard
-                </Button>
-            </Card.Header>
-            <Card.Body className="p-4">
-                {message.text && (
-                    <Alert variant={message.type} onClose={() => setMessage({ type: '', text: '' })} dismissible>
-                        {message.text}
-                    </Alert>
-                )}
+      <BackButton />
 
-                <Form onSubmit={handleSubmit}>
-                    <Row>
-                        <Form.Group as={Col} md="8" className="mb-3" controlId="formTitle">
-                            <Form.Label>Title</Form.Label>
-                            <Form.Control
-                                type="text"
-                                value={formData.title}
-                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                required
-                            />
-                        </Form.Group>
-                        <Form.Group as={Col} md="4" className="mb-3" controlId="formPriority">
-                            <Form.Label>Priority</Form.Label>
-                            <Form.Select value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })}>
-                                <option>Low</option>
-                                <option>Medium</option>
-                                <option>High</option>
-                            </Form.Select>
-                        </Form.Group>
-                    </Row>
-                    
-                    <Form.Group className="mb-3" controlId="formDescription">
-                        <Form.Label>Description</Form.Label>
-                        <Form.Control
-                            as="textarea" rows={4}
-                            value={formData.description}
-                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            required
-                        />
-                    </Form.Group>
+      <Card className="shadow-sm">
+        <Card.Header as="h2" className="d-flex justify-content-between align-items-center">
+          ✏️ Edit Issue
+          <Button as={Link} to="/dashboard" variant="outline-secondary" size="sm">
+            <FaArrowLeft className="me-2" /> Back to Dashboard
+          </Button>
+        </Card.Header>
 
-                    <Row>
-                        <Form.Group as={Col} md="6" className="mb-3" controlId="formCategory">
-                            <Form.Label>Category</Form.Label>
-                            <Form.Control
-                                type="text"
-                                value={formData.category}
-                                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                            />
-                        </Form.Group>
-                        <Form.Group as={Col} md="6" className="mb-3" controlId="formPhoto">
-                            <Form.Label>Upload New Photo</Form.Label>
-                            <Form.Control type="file" onChange={(e) => setPhoto(e.target.files[0])} />
-                        </Form.Group>
-                    </Row>
+        <Card.Body className="p-4">
+          {message.text && (
+            <Alert variant={message.type} dismissible onClose={() => setMessage({ type: "", text: "" })}>
+              {message.text}
+            </Alert>
+          )}
 
-                    <Form.Group className="mb-3" controlId="formSearch">
-                        <Form.Label>Search Location</Form.Label>
-                        <InputGroup>
-                            <Form.Control
-                                type="text"
-                                value={searchQuery}
-                                placeholder="Search for a city or address..."
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                            <Button variant="outline-secondary" onClick={handleSearch}>Search</Button>
-                        </InputGroup>
-                    </Form.Group>
-                    
-                    {searchResults.length > 0 && (
-                        <ListGroup className="mb-3">
-                            {searchResults.map((place) => (
-                                <ListGroup.Item action key={place.place_id} onClick={() => handleSelectLocation(place)}>
-                                    {place.display_name}
-                                </ListGroup.Item>
-                            ))}
-                        </ListGroup>
-                    )}
+          <Form onSubmit={handleSubmit}>
+            <Row>
+              <Form.Group as={Col} md="8" className="mb-3">
+                <Form.Label>Title</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  required
+                />
+              </Form.Group>
 
-                    <div style={{ height: "400px", width: "100%" }} className="mb-3">
-                        <MapContainer center={[formData.latitude, formData.longitude]} zoom={15} style={{ height: "100%", width: "100%" }}>
-                            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                            <DraggableMarker />
-                        </MapContainer>
-                    </div>
+              <Form.Group as={Col} md="4" className="mb-3">
+                <Form.Label>Priority</Form.Label>
+                <Form.Select
+                  value={formData.priority}
+                  onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                >
+                  <option>Low</option>
+                  <option>Medium</option>
+                  <option>High</option>
+                </Form.Select>
+              </Form.Group>
+            </Row>
 
-                    <Button variant="primary" type="submit" disabled={submitting}>
-                        {submitting ? (
-                            <>
-                                <Spinner as="span" animation="border" size="sm" className="me-2" />
-                                Saving...
-                            </>
-                        ) : "💾 Save Changes"}
-                    </Button>
-                </Form>
-            </Card.Body>
-        </Card>
+            <Form.Group className="mb-3">
+              <Form.Label>Description</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={4}
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                required
+              />
+            </Form.Group>
+
+            <Row>
+              <Form.Group as={Col} md="6" className="mb-3">
+                <Form.Label>Category</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                />
+              </Form.Group>
+
+              <Form.Group as={Col} md="6" className="mb-3">
+                <Form.Label>Upload New Photo</Form.Label>
+                <Form.Control type="file" onChange={(e) => setPhoto(e.target.files[0])} />
+              </Form.Group>
+            </Row>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Search Location</Form.Label>
+              <InputGroup>
+                <Form.Control
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search for an address..."
+                />
+                <Button variant="outline-secondary" onClick={handleSearch}>Search</Button>
+              </InputGroup>
+            </Form.Group>
+
+            {searchResults.length > 0 && (
+              <ListGroup className="mb-3">
+                {searchResults.map((place) => (
+                  <ListGroup.Item key={place.place_id} action onClick={() => handleSelectLocation(place)}>
+                    {place.display_name}
+                  </ListGroup.Item>
+                ))}
+              </ListGroup>
+            )}
+
+            <div style={{ height: "400px" }} className="mb-3">
+              <MapContainer center={[formData.latitude, formData.longitude]} zoom={15} style={{ height: "100%" }}>
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                <DraggableMarker />
+              </MapContainer>
+            </div>
+
+            <Button type="submit" variant="primary" disabled={submitting}>
+              {submitting ? "Saving…" : "💾 Save Changes"}
+            </Button>
+          </Form>
+        </Card.Body>
+      </Card>
     </Container>
   );
 }

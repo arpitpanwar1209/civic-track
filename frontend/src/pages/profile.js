@@ -1,3 +1,4 @@
+// frontend/src/pages/Profile.js
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import BackButton from "../components/BackButton";
@@ -19,23 +20,16 @@ export default function Profile() {
     username: "",
     email: "",
     contact: "",
-    profile_pic: null, // URL string from API
+    profile_pic: null,
   });
 
-  
-<Container className="py-4">
-  <BackButton />
-  {/* rest of content */}
-</Container>
-
-  const [newProfilePicFile, setNewProfilePicFile] = useState(null); // Store the File object
-  const [preview, setPreview] = useState(null); // Local preview for new file
+  const [newProfilePicFile, setNewProfilePicFile] = useState(null);
+  const [preview, setPreview] = useState(null);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState({ type: "", text: "" });
   const [loading, setLoading] = useState(true);
 
   const token = localStorage.getItem("access");
-  // It's best practice to use an environment variable for your API URL
   const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
   // Load current profile
@@ -63,12 +57,12 @@ export default function Profile() {
     loadProfile();
   }, [API_URL, token]);
 
-  // Handle file choose
+  // Handle profile image selection
   const onFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setPreview(URL.createObjectURL(file));
-    setNewProfilePicFile(file); // Store File object
+    setNewProfilePicFile(file);
   };
 
   const onInputChange = (e) => {
@@ -86,9 +80,7 @@ export default function Profile() {
       form.append("username", profile.username);
       form.append("email", profile.email);
       form.append("contact", profile.contact);
-      if (newProfilePicFile) {
-        form.append("profile_pic", newProfilePicFile);
-      }
+      if (newProfilePicFile) form.append("profile_pic", newProfilePicFile);
 
       const res = await fetch(`${API_URL}/api/profile/`, {
         method: "PATCH",
@@ -100,9 +92,10 @@ export default function Profile() {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.detail || "Could not save profile");
       }
-      
+
       const data = await res.json();
       setMsg({ type: "success", text: "✅ Profile updated successfully!" });
+
       setProfile((p) => ({
         ...p,
         profile_pic: data.profile_pic || p.profile_pic,
@@ -111,8 +104,7 @@ export default function Profile() {
       setPreview(null);
 
     } catch (e) {
-      console.error(e);
-      setMsg({ type: "danger", text: `⚠️ ${e.message || 'Network error'}` });
+      setMsg({ type: "danger", text: `⚠️ ${e.message}` });
     } finally {
       setSaving(false);
     }
@@ -128,6 +120,8 @@ export default function Profile() {
 
   return (
     <Container className="my-4">
+      <BackButton className="mb-3" />
+
       <Card className="shadow-sm">
         <Card.Header as="h2" className="d-flex justify-content-between align-items-center">
           👤 My Profile
@@ -135,17 +129,19 @@ export default function Profile() {
             <FaArrowLeft className="me-2" /> Back to Dashboard
           </Button>
         </Card.Header>
+
         <Card.Body className="p-4">
           {msg.text && (
             <Alert variant={msg.type} onClose={() => setMsg({ type: "", text: "" })} dismissible>
               {msg.text}
             </Alert>
           )}
+
           {loading ? (
-             <div className="text-center p-5">
-                <Spinner animation="border" />
-                <p className="mt-2">Loading Profile...</p>
-             </div>
+            <div className="text-center p-5">
+              <Spinner animation="border" />
+              <p className="mt-2">Loading Profile...</p>
+            </div>
           ) : (
             <Form onSubmit={handleSave} encType="multipart/form-data">
               <Row>
@@ -154,18 +150,24 @@ export default function Profile() {
                     src={imgSrc}
                     alt="Profile Avatar"
                     roundedCircle
-                    style={{ width: "150px", height: "150px", objectFit: "cover", border: "4px solid #eee" }}
+                    style={{
+                      width: "150px",
+                      height: "150px",
+                      objectFit: "cover",
+                      border: "4px solid #eee",
+                    }}
                   />
+
                   <Form.Group controlId="formFile" className="mt-3">
-                     <Form.Label className="btn btn-outline-primary btn-sm">
-                        📷 Change Photo
-                        <Form.Control type="file" accept="image/*" onChange={onFileChange} hidden />
-                     </Form.Label>
+                    <Form.Label className="btn btn-outline-primary btn-sm">
+                      📷 Change Photo
+                      <Form.Control type="file" accept="image/*" onChange={onFileChange} hidden />
+                    </Form.Label>
                   </Form.Group>
                 </Col>
 
                 <Col md={8}>
-                  <Form.Group className="mb-3" controlId="formUsername">
+                  <Form.Group className="mb-3">
                     <Form.Label>Username</Form.Label>
                     <Form.Control
                       type="text"
@@ -176,7 +178,7 @@ export default function Profile() {
                     />
                   </Form.Group>
 
-                  <Form.Group className="mb-3" controlId="formEmail">
+                  <Form.Group className="mb-3">
                     <Form.Label>Email Address</Form.Label>
                     <Form.Control
                       type="email"
@@ -187,7 +189,7 @@ export default function Profile() {
                     />
                   </Form.Group>
 
-                  <Form.Group className="mb-3" controlId="formContact">
+                  <Form.Group className="mb-3">
                     <Form.Label>Contact Number</Form.Label>
                     <Form.Control
                       type="text"
@@ -197,11 +199,11 @@ export default function Profile() {
                       placeholder="e.g., +91 1234567890"
                     />
                   </Form.Group>
-                  
+
                   <Button variant="primary" type="submit" disabled={saving}>
                     {saving ? (
                       <>
-                        <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
+                        <Spinner as="span" animation="border" size="sm" className="me-2" />
                         Saving...
                       </>
                     ) : (

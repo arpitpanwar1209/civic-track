@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Form, Button, Alert, Spinner } from "react-bootstrap";
-import BackButton from "../components/BackButton";
 
 export default function SubmitIssue() {
   const [formData, setFormData] = useState({
@@ -11,20 +10,16 @@ export default function SubmitIssue() {
     photo: null,
     priority: "medium",
   });
+
   const [predictedCategory, setPredictedCategory] = useState(null);
   const [loadingPrediction, setLoadingPrediction] = useState(false);
   const [success, setSuccess] = useState(null);
   const [error, setError] = useState(null);
 
   const token = localStorage.getItem("access");
+  const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
-  
-<Container className="py-4">
-  <BackButton />
-  {/* rest of content */}
-</Container>
-
-  // 🔹 Handle input change
+  // Handle input change
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     if (name === "photo") {
@@ -33,17 +28,17 @@ export default function SubmitIssue() {
       setFormData({ ...formData, [name]: value });
     }
 
-    // 🧠 Trigger prediction when typing description
+    // Trigger category prediction
     if (name === "description" && value.length > 10) {
       predictCategory(value);
     }
   };
 
-  // 🔹 AI Category Prediction
+  // AI Category Prediction
   const predictCategory = async (description) => {
     try {
       setLoadingPrediction(true);
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/predict-category/`, {
+      const res = await fetch(`${API_URL}/api/predict-category/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -51,10 +46,11 @@ export default function SubmitIssue() {
         },
         body: JSON.stringify({ description }),
       });
+
       const data = await res.json();
       if (res.ok && data.predicted_category) {
         setPredictedCategory(data.predicted_category);
-        setFormData({ ...formData, category: data.predicted_category });
+        setFormData((prev) => ({ ...prev, category: data.predicted_category }));
       } else {
         setPredictedCategory(null);
       }
@@ -65,19 +61,19 @@ export default function SubmitIssue() {
     }
   };
 
-  // 🔹 Handle Submit
+  // Submit
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
 
     const submitData = new FormData();
-    for (const key in formData) {
-      submitData.append(key, formData[key]);
-    }
+    Object.entries(formData).forEach(([key, value]) => {
+      submitData.append(key, value);
+    });
 
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/issues/`, {
+      const res = await fetch(`${API_URL}/api/issues/`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: submitData,
@@ -95,10 +91,10 @@ export default function SubmitIssue() {
         });
         setPredictedCategory(null);
       } else {
-        setError("Failed to submit issue.");
+        setError("⚠️ Failed to submit issue.");
       }
-    } catch (err) {
-      setError("Error submitting issue.");
+    } catch {
+      setError("⚠️ Network error while submitting issue.");
     }
   };
 
@@ -130,11 +126,13 @@ export default function SubmitIssue() {
           placeholder="Describe the issue in detail"
           required
         />
+
         {loadingPrediction && (
           <div className="mt-2 text-muted small">
             <Spinner animation="border" size="sm" /> Analyzing description...
           </div>
         )}
+
         {predictedCategory && (
           <Alert variant="info" className="mt-2">
             🤖 Suggested Category: <strong>{predictedCategory}</strong>
@@ -197,6 +195,5 @@ export default function SubmitIssue() {
         Submit Issue
       </Button>
     </Form>
-    
   );
 }

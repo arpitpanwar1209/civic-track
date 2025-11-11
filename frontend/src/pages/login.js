@@ -1,3 +1,4 @@
+// frontend/src/pages/Login.js
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import BackButton from "../components/BackButton";
@@ -30,12 +31,6 @@ function Login() {
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
-  
-<Container className="py-4">
-  <BackButton />
-  {/* rest of content */}
-</Container>
-
   // ---------------- LOGIN ----------------
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -44,7 +39,7 @@ function Login() {
     setSubmitting(true);
 
     try {
-      // Step 1: Request Access & Refresh Tokens
+      // Step 1: Request tokens
       const res = await fetch(`${API_URL}/api/token/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -52,24 +47,22 @@ function Login() {
       });
 
       const data = await res.json();
-
       if (!res.ok) {
         setError(data.detail || "Invalid login credentials.");
         setSubmitting(false);
         return;
       }
 
-      // Store tokens
+      // Save tokens
       localStorage.setItem("access", data.access);
       localStorage.setItem("refresh", data.refresh);
 
-      // Step 2: Get profile with token
+      // Step 2: Fetch profile
       const profileRes = await fetch(`${API_URL}/api/accounts/me/`, {
         headers: { Authorization: `Bearer ${data.access}` },
       });
 
       const profile = await profileRes.json();
-
       if (profileRes.ok) {
         localStorage.setItem("username", profile.username);
         localStorage.setItem("role", profile.role);
@@ -101,23 +94,23 @@ function Login() {
       });
 
       const data = await res.json();
-
-      if (res.ok) {
-        setResetMsg("✅ Password reset link sent to your email.");
-      } else {
-        setResetMsg(data.detail || "⚠️ Unable to send reset email.");
-      }
-    } catch (err) {
-      console.error(err);
+      setResetMsg(
+        res.ok
+          ? "✅ Password reset link sent to your email."
+          : data.detail || "⚠️ Unable to send reset email."
+      );
+    } catch {
       setResetMsg("⚠️ Server error. Please try again.");
     }
   };
 
   return (
     <Container
-      className="d-flex align-items-center justify-content-center"
-      style={{ minHeight: "80vh" }}
+      className="d-flex flex-column align-items-center justify-content-center"
+      style={{ minHeight: "90vh" }}
     >
+      <BackButton className="align-self-start mb-3" />
+
       <Row className="w-100">
         <Col md={6} lg={5} xl={4} className="mx-auto">
           <Card className="shadow-sm">
@@ -173,7 +166,7 @@ function Login() {
 
               <div className="text-center mt-3">
                 <small>
-                  Forgot your password?{" "}
+                  Forgot password?{" "}
                   <Button
                     variant="link"
                     className="p-0 text-decoration-underline"
@@ -194,6 +187,7 @@ function Login() {
         </Col>
       </Row>
 
+      {/* Reset Password Modal */}
       <Modal show={showModal} onHide={() => setShowModal(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>Reset Password</Modal.Title>

@@ -1,3 +1,4 @@
+// frontend/src/pages/Signup.js
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import BackButton from "../components/BackButton";
@@ -23,12 +24,6 @@ function Signup() {
     profession: "",
   });
 
-  
-<Container className="py-4">
-  <BackButton />
-  {/* rest of content */}
-</Container>
-
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -43,11 +38,8 @@ function Signup() {
     setSuccess("");
     setSubmitting(true);
 
-    // ✅ If role is consumer → do not send profession field
     const payload = { ...formData };
-    if (payload.role === "consumer") {
-      delete payload.profession;
-    }
+    if (payload.role === "consumer") delete payload.profession;
 
     try {
       const res = await fetch(`${API_URL}/api/accounts/signup/`, {
@@ -61,7 +53,6 @@ function Signup() {
       if (res.ok) {
         setSuccess("🎉 Account created successfully! Logging you in...");
 
-        // ✅ Auto login
         const loginRes = await fetch(`${API_URL}/api/token/`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -78,6 +69,7 @@ function Signup() {
           localStorage.setItem("refresh", loginData.refresh);
           localStorage.setItem("username", formData.username);
           localStorage.setItem("role", formData.role);
+          localStorage.setItem("profession", formData.profession || "");
 
           setTimeout(() => navigate("/dashboard"), 1200);
         } else {
@@ -101,7 +93,9 @@ function Signup() {
   };
 
   return (
-    <Container className="d-flex align-items-center justify-content-center" style={{ minHeight: "80vh" }}>
+    <Container className="d-flex flex-column align-items-start justify-content-center" style={{ minHeight: "85vh" }}>
+      <BackButton className="mb-3" />
+
       <Row className="w-100">
         <Col md={6} lg={5} xl={4} className="mx-auto">
           <Card className="shadow-sm">
@@ -112,19 +106,37 @@ function Signup() {
               {error && <Alert variant="danger">{error}</Alert>}
 
               <Form onSubmit={handleSubmit}>
+                
                 <Form.Group className="mb-3">
                   <Form.Label>Username</Form.Label>
-                  <Form.Control name="username" value={formData.username} onChange={handleChange} required />
+                  <Form.Control
+                    name="username"
+                    value={formData.username}
+                    onChange={handleChange}
+                    required
+                  />
                 </Form.Group>
 
                 <Form.Group className="mb-3">
                   <Form.Label>Email</Form.Label>
-                  <Form.Control type="email" name="email" value={formData.email} onChange={handleChange} required />
+                  <Form.Control
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                  />
                 </Form.Group>
 
                 <Form.Group className="mb-3">
                   <Form.Label>Password</Form.Label>
-                  <Form.Control type="password" name="password" value={formData.password} onChange={handleChange} required />
+                  <Form.Control
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    required
+                  />
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -165,6 +177,7 @@ function Signup() {
                   Already have an account? <Link to="/login">Log In</Link>
                 </small>
               </div>
+
             </Card.Body>
           </Card>
         </Col>

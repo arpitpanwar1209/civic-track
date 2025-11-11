@@ -1,53 +1,51 @@
+// frontend/src/pages/Issue.js
 import React, { useState, useEffect } from "react";
 import BackButton from "../components/BackButton";
+import { Container, Spinner, Alert, ListGroup } from "react-bootstrap";
 
-// 1. ADD THIS LINE
+// Backend URL
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
 export default function Issue() {
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-<Container className="py-4">
-  <BackButton />
-  {/* rest of content */}
-</Container>
 
   useEffect(() => {
-    // 2. CHANGE THIS LINE
     fetch(`${API_URL}/api/issues/`)
       .then((res) => res.json())
       .then((data) => {
-        console.log("API Response:", data); // 🔍 Debugging
-        if (Array.isArray(data)) {
-          setIssues(data);
-        } else if (data.results) {
-          setIssues(data.results);
-        } else {
-          setIssues([]);
-        }
-        setLoading(false);
+        console.log("API Response:", data);
+        setIssues(Array.isArray(data) ? data : data.results || []);
       })
       .catch((err) => {
         console.error("Error fetching issues:", err);
-        setLoading(false);
-      });
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   return (
-    <div>
-      <h2>All Issues</h2>
+    <Container className="py-4">
+      <BackButton />
+
+      <h2 className="fw-bold mb-4">📝 All Reported Issues</h2>
+
       {loading ? (
-        <p>Loading...</p>
+        <div className="text-center">
+          <Spinner animation="border" />
+          <p className="mt-2">Loading issues...</p>
+        </div>
       ) : issues.length === 0 ? (
-        <p>No issues found.</p>
+        <Alert variant="info">No issues found.</Alert>
       ) : (
-        <ul>
+        <ListGroup>
           {issues.map((issue) => (
-            <li key={issue.id}>{issue.title}</li>
+            <ListGroup.Item key={issue.id}>
+              <strong>{issue.title}</strong>
+              {issue.priority && ` — Priority: ${issue.priority}`}
+            </ListGroup.Item>
           ))}
-        </ul>
+        </ListGroup>
       )}
-    </div>
+    </Container>
   );
 }

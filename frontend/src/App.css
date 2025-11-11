@@ -1,4 +1,8 @@
+/* Remove this line (moved to index.js)
 @import "leaflet/dist/leaflet.css";
+*/
+
+/* Tailwind (kept) */
 @import "tailwindcss/base";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
@@ -35,39 +39,31 @@
 }
 
 @keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
-/*
-CSS for App.js Navbar Effects
-*/
 
-/* --- Simple Hover & Touch Effects --- */
-
-/* Base style for all links */
-.nav-link, .nav-link-brand {
-  /* This makes the effect smooth */
+/* --- NAVBAR HOVER & CLICK EFFECTS --- */
+.nav-link,
+.nav-link-brand {
   transition: all 0.2s ease-in-out;
 }
 
-/* --- Effect 1: Grow on Hover (Cursor) --- */
-.nav-link:hover, .nav-link-brand:hover {
-  transform: scale(1.1); /* Makes the link 10% bigger */
-  /* Uses a common info/link color from Bootstrap */
-  color: #17a2b8 !important; 
+.nav-link:hover,
+.nav-link-brand:hover {
+  transform: scale(1.1);
+  color: #17a2b8 !important;
 }
 
-/* --- Effect 2: Shrink on Click (Touch/Mouse) --- */
-.nav-link:active, .nav-link-brand:active {
-  transform: scale(0.95); /* Makes the link 5% smaller when clicked */
-  opacity: 0.8; /* Slightly fades it */
+.nav-link:active,
+.nav-link-brand:active {
+  transform: scale(0.95);
+  opacity: 0.8;
 }
 
+
+/* --- Shimmer Effect --- */
 .shimmer {
   position: relative;
   overflow: hidden;
@@ -84,13 +80,17 @@ CSS for App.js Navbar Effects
   100% { transform: translateX(100%); }
 }
 
+
+/* --- Multi-line text truncation --- */
 .text-truncate-2 {
   display: -webkit-box;
-  -webkit-line-clamp: 2; 
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
+
+/* Card + hover lift */
 .hover-lift {
   transition: transform .15s ease, box-shadow .15s ease;
 }
@@ -98,17 +98,24 @@ CSS for App.js Navbar Effects
   transform: translateY(-2px);
   box-shadow: 0 .75rem 1.5rem rgba(0,0,0,.08) !important;
 }
+
 .brand-dot {
   display:inline-block;
-  width:.5rem;height:.5rem;margin-left:.25rem;border-radius:50%;
+  width:.5rem;
+  height:.5rem;
+  margin-left:.25rem;
+  border-radius:50%;
   background: linear-gradient(45deg, #0d6efd, #20c997);
 }
 
+
+/* Hero gradient & floating UI */
 .hero-gradient {
   background: radial-gradient(1200px 400px at 20% -20%, rgba(13,110,253,.25), transparent 60%),
               radial-gradient(1200px 400px at 80% -10%, rgba(32,201,151,.25), transparent 60%),
               linear-gradient(180deg, #0d6efd 0%, #0b5ed7 100%);
 }
+
 .floating {
   animation: floatY 6s ease-in-out infinite;
 }
@@ -117,6 +124,8 @@ CSS for App.js Navbar Effects
   50% { transform: translateY(-8px); }
 }
 
+
+/* Floating Action Button */
 .fab-report {
   position: fixed;
   right: 18px;
@@ -124,11 +133,14 @@ CSS for App.js Navbar Effects
   width: 54px;
   height: 54px;
   border-radius: 50%;
-  display:flex;align-items:center;justify-content:center;
+  display:flex;
+  align-items:center;
+  justify-content:center;
   z-index: 1040;
 }
 
-/* Smooth sticky navbar */
+
+/* Sticky Glass Navbar */
 .navbar {
   position: sticky;
   top: 0;
@@ -138,7 +150,6 @@ CSS for App.js Navbar Effects
   transition: all 0.3s ease-in-out;
 }
 
-/* When scrolling down, shrink navbar */
 .navbar.scrolled {
   padding-top: 0.2rem !important;
   padding-bottom: 0.2rem !important;
@@ -149,16 +160,19 @@ body {
   scroll-behavior: smooth;
 }
 
+
+/* Card Lift Hover */
 .card {
   border-radius: 12px;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-
 .card:hover {
   transform: translateY(-3px);
   box-shadow: 0 6px 16px rgba(0,0,0,0.15);
 }
 
+
+/* Buttons round */
 button {
   border-radius: 8px !important;
 }
