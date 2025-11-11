@@ -1,31 +1,21 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Navbar, Container, Nav, Button, Dropdown, Image } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 import { FaMapMarkedAlt, FaPlusCircle } from "react-icons/fa";
-import { useEffect, useState } from "react";
-
-function AppNavbar() {
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 10);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  return (
-    <Navbar className={scrolled ? "navbar scrolled" : "navbar"}>
-      {/* existing nav items */}
-    </Navbar>
-  );
-}
-
 
 export default function AppNavbar() {
   const navigate = useNavigate();
   const username = localStorage.getItem("username");
   const role = localStorage.getItem("role");
   const isLoggedIn = !!localStorage.getItem("access");
+
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const logout = () => {
     localStorage.removeItem("access");
@@ -36,15 +26,25 @@ export default function AppNavbar() {
   };
 
   return (
-    <Navbar expand="lg" bg="white" className="shadow-sm sticky-top">
+    <Navbar
+      expand="lg"
+      bg="white"
+      className={`shadow-sm sticky-top transition-nav ${scrolled ? "nav-scrolled" : ""}`}
+    >
       <Container>
         <Navbar.Brand as={Link} to="/" className="fw-bold">
           CivicTrack <span className="brand-dot"></span>
         </Navbar.Brand>
+
         <Navbar.Toggle />
+
         <Navbar.Collapse>
           <Nav className="me-auto">
-            <Nav.Link as={Link} to="/dashboard"><FaMapMarkedAlt className="me-1" /> Dashboard</Nav.Link>
+            {isLoggedIn && (
+              <Nav.Link as={Link} to="/dashboard">
+                <FaMapMarkedAlt className="me-1" /> Dashboard
+              </Nav.Link>
+            )}
             <Nav.Link as={Link} to="/issues">Issues</Nav.Link>
           </Nav>
 
@@ -55,9 +55,12 @@ export default function AppNavbar() {
             </div>
           ) : (
             <div className="d-flex gap-2 align-items-center">
-              <Button as={Link} to="/dashboard#report" variant="success">
-                <FaPlusCircle className="me-1" /> Report
-              </Button>
+              {role === "consumer" && (
+                <Button as={Link} to="/dashboard#report" variant="success">
+                  <FaPlusCircle className="me-1" /> Report
+                </Button>
+              )}
+
               <Dropdown align="end">
                 <Dropdown.Toggle variant="light" className="d-flex align-items-center">
                   <Image
@@ -68,8 +71,11 @@ export default function AppNavbar() {
                     src={`https://api.dicebear.com/9.x/initials/svg?seed=${username || "CT"}`}
                     className="me-2"
                   />
-                  <span className="small">{username} <span className="text-muted">({role})</span></span>
+                  <span className="small">
+                    {username} <span className="text-muted">({role})</span>
+                  </span>
                 </Dropdown.Toggle>
+
                 <Dropdown.Menu>
                   <Dropdown.Item as={Link} to="/profile">Profile</Dropdown.Item>
                   <Dropdown.Divider />
