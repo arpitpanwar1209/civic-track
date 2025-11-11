@@ -1,7 +1,6 @@
+// frontend/src/pages/SubmitIssue.js
 import React, { useState } from "react";
 import { Form, Button, Alert, Spinner } from "react-bootstrap";
-import { Container } from "react-bootstrap";
-
 
 export default function SubmitIssue() {
   const [formData, setFormData] = useState({
@@ -30,7 +29,6 @@ export default function SubmitIssue() {
       setFormData({ ...formData, [name]: value });
     }
 
-    // Trigger category prediction
     if (name === "description" && value.length > 10) {
       predictCategory(value);
     }

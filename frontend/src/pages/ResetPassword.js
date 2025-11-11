@@ -3,8 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import BackButton from "../components/BackButton";
 import { Container, Card, Form, Button, Alert, Spinner } from "react-bootstrap";
-import { Container } from "react-bootstrap";
-
 
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
@@ -54,7 +52,11 @@ export default function ResetPassword() {
         <Card.Body>
           <h3 className="fw-bold mb-3 text-center">🔐 Reset Password</h3>
 
-          {msg && <Alert variant={msg.includes("✅") ? "success" : "danger"}>{msg}</Alert>}
+          {msg && (
+            <Alert variant={msg.includes("✅") ? "success" : "danger"}>
+              {msg}
+            </Alert>
+          )}
 
           <Form>
             <Form.Group className="mb-3">
