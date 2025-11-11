@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { useTypewriter, Cursor } from "react-simple-typewriter";
 import { FaPaperPlane, FaPhone, FaEnvelope } from "react-icons/fa";
 import "./home.css";
+import BackButton from "../components/BackButton";
 
 export default function Home() {
   const [nearbyIssues, setNearbyIssues] = useState([]);
@@ -12,6 +13,7 @@ export default function Home() {
   const [error, setError] = useState("");
 
   const role = localStorage.getItem("role");
+  const token = localStorage.getItem("access");
   const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
   const [headlineText] = useTypewriter({
@@ -33,7 +35,9 @@ export default function Home() {
   const handleSuccess = ({ coords }) => {
     const { latitude, longitude } = coords;
 
-    fetch(`${API_URL}/api/issues/?nearby=${latitude},${longitude}&radius_km=5`)
+    fetch(`${API_URL}/api/issues/?nearby=${latitude},${longitude}&radius_km=5`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
       .then((res) => {
         if (!res.ok) throw new Error();
         return res.json();
@@ -75,6 +79,12 @@ export default function Home() {
                 </Button>
               </>
             )}
+
+            
+<Container className="py-4">
+  <BackButton />
+  {/* rest of content */}
+</Container>
 
             {role === "provider" && (
               <Button as={Link} to="/dashboard" variant="info" size="lg" className="pulse-button">

@@ -11,7 +11,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("id", "username", "email", "password", "role")
+        fields = ("id", "username", "email", "password", "role", "profession")
 
     def create(self, validated_data):
         user = User.objects.create_user(
@@ -19,20 +19,39 @@ class RegisterSerializer(serializers.ModelSerializer):
             email=validated_data.get("email", ""),
             password=validated_data["password"],
             role=validated_data.get("role", "consumer"),
+            profession=validated_data.get("profession", None),
         )
         return user
 
 
 class UserSerializer(serializers.ModelSerializer):
+    """Used when returning logged-in profile to frontend"""
     class Meta:
         model = CustomUser
-        fields = ["id", "username", "email", "contact", "profile_pic", "role"]
+        fields = [
+            "id",
+            "username",
+            "email",
+            "contact",
+            "profile_pic",
+            "role",
+            "profession",
+        ]
         read_only_fields = ["id", "role"]
 
 
-# ✅ New serializer for profile update
 class UserProfileSerializer(serializers.ModelSerializer):
+    """Used for profile update settings page"""
     class Meta:
         model = CustomUser
-        fields = ["id", "username", "email", "first_name", "last_name", "contact", "profile_pic"]
-        read_only_fields = ["id", "email"]  # keep email fixed
+        fields = [
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "contact",
+            "profile_pic",
+            "profession",   # ✅ NOW EDITABLE
+        ]
+        read_only_fields = ["id", "email"]

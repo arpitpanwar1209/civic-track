@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import BackButton from "../components/BackButton";
 const API_URL = process.env.REACT_APP_API_URL;
 
 export default function ResetPassword() {
@@ -23,6 +24,12 @@ export default function ResetPassword() {
       setMsg(data.detail || "Invalid or expired reset link.");
     }
   };
+
+  
+<Container className="py-4">
+  <BackButton />
+  {/* rest of content */}
+</Container>
 
   return (
     <div className="container p-5">

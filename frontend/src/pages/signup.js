@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import BackButton from "../components/BackButton";
 import {
   Container,
   Row,
@@ -21,6 +22,12 @@ function Signup() {
     role: "consumer",
     profession: "",
   });
+
+  
+<Container className="py-4">
+  <BackButton />
+  {/* rest of content */}
+</Container>
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");

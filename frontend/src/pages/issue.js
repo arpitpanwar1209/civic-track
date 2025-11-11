@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import BackButton from "../components/BackButton";
 
 // 1. ADD THIS LINE
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
@@ -6,6 +7,11 @@ const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
 export default function Issue() {
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+<Container className="py-4">
+  <BackButton />
+  {/* rest of content */}
+</Container>
 
   useEffect(() => {
     // 2. CHANGE THIS LINE

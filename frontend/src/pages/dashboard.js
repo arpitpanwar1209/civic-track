@@ -5,6 +5,7 @@ import { Container, Row, Col, Card, Button, Spinner, Alert, Badge } from "react-
 import { FaThumbsUp, FaEdit, FaTrash, FaUser, FaCheck, FaHandshake, FaMapMarkerAlt } from "react-icons/fa";
 import IssueMap from "../components/issuemap";
 import SubmitIssue from "./submitissue";
+import BackButton from "../components/BackButton";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
@@ -30,6 +31,11 @@ export default function Dashboard() {
     () => (access ? { Authorization: `Bearer ${access}` } : {}),
     [access]
   );
+  
+<Container className="py-4">
+  <BackButton />
+  {/* rest of content */}
+</Container>
 
   const refreshAccessToken = async () => {
     if (!refresh) {

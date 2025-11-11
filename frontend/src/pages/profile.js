@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import BackButton from "../components/BackButton";
 import {
   Container,
   Row,
@@ -20,6 +21,13 @@ export default function Profile() {
     contact: "",
     profile_pic: null, // URL string from API
   });
+
+  
+<Container className="py-4">
+  <BackButton />
+  {/* rest of content */}
+</Container>
+
   const [newProfilePicFile, setNewProfilePicFile] = useState(null); // Store the File object
   const [preview, setPreview] = useState(null); // Local preview for new file
   const [saving, setSaving] = useState(false);

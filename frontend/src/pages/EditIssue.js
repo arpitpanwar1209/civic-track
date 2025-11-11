@@ -4,6 +4,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import BackButton from "../components/BackButton";
 import {
   Container,
   Row,
@@ -28,6 +29,12 @@ L.Icon.Default.mergeOptions({
   iconUrl: require("leaflet/dist/images/marker-icon.png"),
   shadowUrl: require("leaflet/dist/images/marker-shadow.png"),
 });
+
+
+<Container className="py-4">
+  <BackButton />
+  {/* rest of content */}
+</Container>
 
 export default function EditIssue() {
   const { id } = useParams();

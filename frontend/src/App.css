@@ -127,3 +127,38 @@ CSS for App.js Navbar Effects
   display:flex;align-items:center;justify-content:center;
   z-index: 1040;
 }
+
+/* Smooth sticky navbar */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+  backdrop-filter: blur(6px);
+  background-color: rgba(0,0,0,0.6) !important;
+  transition: all 0.3s ease-in-out;
+}
+
+/* When scrolling down, shrink navbar */
+.navbar.scrolled {
+  padding-top: 0.2rem !important;
+  padding-bottom: 0.2rem !important;
+  background-color: rgba(0,0,0,0.85) !important;
+}
+
+body {
+  scroll-behavior: smooth;
+}
+
+.card {
+  border-radius: 12px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+}
+
+button {
+  border-radius: 8px !important;
+}

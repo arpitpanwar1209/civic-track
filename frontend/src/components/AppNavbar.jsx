@@ -2,6 +2,24 @@ import React from "react";
 import { Navbar, Container, Nav, Button, Dropdown, Image } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 import { FaMapMarkedAlt, FaPlusCircle } from "react-icons/fa";
+import { useEffect, useState } from "react";
+
+function AppNavbar() {
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  return (
+    <Navbar className={scrolled ? "navbar scrolled" : "navbar"}>
+      {/* existing nav items */}
+    </Navbar>
+  );
+}
+
 
 export default function AppNavbar() {
   const navigate = useNavigate();

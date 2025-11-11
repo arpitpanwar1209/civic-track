@@ -16,34 +16,46 @@ from .serializers import RegisterSerializer, UserSerializer, UserProfileSerializ
 User = get_user_model()
 
 
-# ----------------------------
+# ---------------------------------
 # Signup
-# ----------------------------
+# ---------------------------------
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
 
 
-# ----------------------------
-# Custom JWT Login (with extra fields)
-# ----------------------------
+# ---------------------------------
+# Custom Login (JWT with extra data)
+# ---------------------------------
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
+
+        # ✅ Add extra user info inside JWT token (frontend will read this)
         token["username"] = user.username
         token["role"] = user.role
+        token["profession"] = user.profession
+
         return token
+
+    # ✅ Also include extra info in login response, not just token
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        data["username"] = self.user.username
+        data["role"] = self.user.role
+        data["profession"] = self.user.profession
+        return data
 
 
 class LoginView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
 
-# ----------------------------
-# Profile (Read + Update)
-# ----------------------------
+# ---------------------------------
+# Profile (Read)
+# ---------------------------------
 class UserProfileView(generics.RetrieveAPIView):
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -52,6 +64,9 @@ class UserProfileView(generics.RetrieveAPIView):
         return self.request.user
 
 
+# ---------------------------------
+# Profile (Update)
+# ---------------------------------
 class UserProfileUpdateView(generics.RetrieveUpdateAPIView):
     serializer_class = UserProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -60,9 +75,9 @@ class UserProfileUpdateView(generics.RetrieveUpdateAPIView):
         return self.request.user
 
 
-# ----------------------------
-# Forgot Password (Send Email)
-# ----------------------------
+# ---------------------------------
+# Forgot Password (Email Link)
+# ---------------------------------
 class PasswordResetRequestView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -92,9 +107,9 @@ class PasswordResetRequestView(APIView):
         return Response({"detail": "✅ Password reset email sent."}, status=200)
 
 
-# ----------------------------
-# Reset Password (Confirm New Password)
-# ----------------------------
+# ---------------------------------
+# Password Reset Confirm
+# ---------------------------------
 class PasswordResetConfirmView(APIView):
     permission_classes = [permissions.AllowAny]
 

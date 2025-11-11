@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Form, Button, Alert, Spinner } from "react-bootstrap";
+import BackButton from "../components/BackButton";
 
 export default function SubmitIssue() {
   const [formData, setFormData] = useState({
@@ -16,6 +17,12 @@ export default function SubmitIssue() {
   const [error, setError] = useState(null);
 
   const token = localStorage.getItem("access");
+
+  
+<Container className="py-4">
+  <BackButton />
+  {/* rest of content */}
+</Container>
 
   // 🔹 Handle input change
   const handleChange = (e) => {
@@ -190,5 +197,6 @@ export default function SubmitIssue() {
         Submit Issue
       </Button>
     </Form>
+    
   );
 }
