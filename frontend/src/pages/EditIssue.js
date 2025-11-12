@@ -21,7 +21,7 @@ import { FaArrowLeft } from "react-icons/fa";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
-// Fix leaflet marker icons
+// ✅ Fix leaflet marker icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: require("leaflet/dist/images/marker-icon-2x.png"),
@@ -50,7 +50,7 @@ export default function EditIssue() {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Load issue data
+  // ✅ Load existing issue data
   useEffect(() => {
     fetch(`${API_URL}/api/issues/${id}/`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -73,7 +73,7 @@ export default function EditIssue() {
       .finally(() => setLoading(false));
   }, [id, token]);
 
-  // Map marker handler
+  // ✅ Map marker component
   function DraggableMarker() {
     const map = useMapEvents({
       click(e) {
@@ -81,11 +81,12 @@ export default function EditIssue() {
       },
     });
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
       if (formData.latitude && formData.longitude) {
         map.flyTo([formData.latitude, formData.longitude], map.getZoom());
       }
-    }, [formData.latitude, formData.longitude, map]);
+    }, [map]); // only depend on map (prevents lint warning)
 
     return (
       <Marker
@@ -103,7 +104,7 @@ export default function EditIssue() {
     );
   }
 
-  // Search Location
+  // ✅ Location search
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!searchQuery) return;
@@ -124,7 +125,7 @@ export default function EditIssue() {
     setSearchResults([]);
   };
 
-  // Submit changes
+  // ✅ Submit changes
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
@@ -150,7 +151,6 @@ export default function EditIssue() {
 
       setMessage({ type: "success", text: "✅ Issue updated successfully!" });
       setTimeout(() => navigate("/dashboard"), 1200);
-
     } catch (err) {
       setMessage({ type: "danger", text: `❌ Failed: ${err.message}` });
     } finally {
@@ -158,6 +158,7 @@ export default function EditIssue() {
     }
   };
 
+  // ✅ Loading state
   if (loading) {
     return (
       <Container className="text-center py-5">
@@ -167,6 +168,7 @@ export default function EditIssue() {
     );
   }
 
+  // ✅ Render UI
   return (
     <Container className="my-4">
       <BackButton />
@@ -247,7 +249,9 @@ export default function EditIssue() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search for an address..."
                 />
-                <Button variant="outline-secondary" onClick={handleSearch}>Search</Button>
+                <Button variant="outline-secondary" onClick={handleSearch}>
+                  Search
+                </Button>
               </InputGroup>
             </Form.Group>
 
@@ -262,7 +266,11 @@ export default function EditIssue() {
             )}
 
             <div style={{ height: "400px" }} className="mb-3">
-              <MapContainer center={[formData.latitude, formData.longitude]} zoom={15} style={{ height: "100%" }}>
+              <MapContainer
+                center={[formData.latitude || 0, formData.longitude || 0]}
+                zoom={15}
+                style={{ height: "100%" }}
+              >
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                 <DraggableMarker />
               </MapContainer>

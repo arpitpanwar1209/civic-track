@@ -1,5 +1,5 @@
 // frontend/src/pages/Home.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Container, Row, Col, Card, Button, Spinner, Alert } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import { useTypewriter, Cursor } from "react-simple-typewriter";
@@ -23,6 +23,30 @@ export default function Home() {
     deleteSpeed: 80,
   });
 
+  // ✅ useCallback ensures handleSuccess and handleError don't change on each render
+  const handleSuccess = useCallback(
+    ({ coords }) => {
+      const { latitude, longitude } = coords;
+      fetch(`${API_URL}/api/issues/?nearby=${latitude},${longitude}&radius_km=5`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error();
+          return res.json();
+        })
+        .then((data) => setNearbyIssues(Array.isArray(data) ? data : data.results || []))
+        .catch(() => setError("Could not load nearby issues."))
+        .finally(() => setLoading(false));
+    },
+    [API_URL, token]
+  );
+
+  const handleError = useCallback(() => {
+    setError("Please enable location access to see nearby issues.");
+    setLoading(false);
+  }, []);
+
+  // ✅ Safe useEffect (ESLint compliant)
   useEffect(() => {
     if (!navigator.geolocation) {
       setError("Your browser does not support location access.");
@@ -30,27 +54,7 @@ export default function Home() {
       return;
     }
     navigator.geolocation.getCurrentPosition(handleSuccess, handleError);
-  }, []);
-
-  const handleSuccess = ({ coords }) => {
-    const { latitude, longitude } = coords;
-
-    fetch(`${API_URL}/api/issues/?nearby=${latitude},${longitude}&radius_km=5`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error();
-        return res.json();
-      })
-      .then((data) => setNearbyIssues(Array.isArray(data) ? data : data.results || []))
-      .catch(() => setError("Could not load nearby issues."))
-      .finally(() => setLoading(false));
-  };
-
-  const handleError = () => {
-    setError("Please enable location access to see nearby issues.");
-    setLoading(false);
-  };
+  }, [handleSuccess, handleError]);
 
   return (
     <div>
@@ -71,10 +75,15 @@ export default function Home() {
           </p>
 
           <div className="mt-4">
-
             {role === "consumer" && (
               <>
-                <Button as={Link} to="/dashboard" variant="warning" size="lg" className="me-3 pulse-button">
+                <Button
+                  as={Link}
+                  to="/dashboard"
+                  variant="warning"
+                  size="lg"
+                  className="me-3 pulse-button"
+                >
                   🚀 Report an Issue
                 </Button>
 
@@ -99,7 +108,7 @@ export default function Home() {
         </Container>
       </div>
 
-      {/* Back Navigation */}
+      {/* 🔙 Back Navigation */}
       <Container className="mt-3">
         <BackButton />
       </Container>
