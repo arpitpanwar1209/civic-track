@@ -1,4 +1,3 @@
-// frontend/src/pages/Home.js
 import React, { useState, useEffect, useCallback } from "react";
 import { Container, Row, Col, Card, Button, Spinner, Alert } from "react-bootstrap";
 import { Link } from "react-router-dom";
@@ -27,14 +26,17 @@ export default function Home() {
   const handleSuccess = useCallback(
     ({ coords }) => {
       const { latitude, longitude } = coords;
+
       fetch(`${API_URL}/api/issues/?nearby=${latitude},${longitude}&radius_km=5`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       })
         .then((res) => {
-          if (!res.ok) throw new Error();
+          if (!res.ok) throw new Error("Could not fetch issues");
           return res.json();
         })
-        .then((data) => setNearbyIssues(Array.isArray(data) ? data : data.results || []))
+        .then((data) => {
+          setNearbyIssues(Array.isArray(data) ? data : data.results || []);
+        })
         .catch(() => setError("Could not load nearby issues."))
         .finally(() => setLoading(false));
     },
@@ -136,6 +138,7 @@ export default function Home() {
                       variant="top"
                       src={`${API_URL}${issue.photo}`}
                       className="issue-card-img"
+                      alt={issue.title}
                     />
                   )}
                   <Card.Body>

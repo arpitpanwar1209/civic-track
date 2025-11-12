@@ -36,7 +36,7 @@ export default function Profile() {
   useEffect(() => {
     async function loadProfile() {
       try {
-        const res = await fetch(`${API_URL}/api/accounts/me/`, {
+        const res = await fetch(`${API_URL}/api/profile/`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) throw new Error("Failed to fetch profile.");

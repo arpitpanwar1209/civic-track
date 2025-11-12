@@ -13,6 +13,7 @@ urlpatterns = [
     path("login/", LoginView.as_view(), name="login"),
     path("profile/", UserProfileView.as_view(), name="profile"),
     path("profile/update/", UserProfileUpdateView.as_view(), name="profile_update"),
+    
 
     # 🔹 Password reset endpoints
     path("password-reset/", PasswordResetRequestView.as_view(), name="password_reset"),
