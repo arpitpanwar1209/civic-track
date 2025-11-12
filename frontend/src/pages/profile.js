@@ -1,6 +1,5 @@
-// frontend/src/pages/Profile.js
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import BackButton from "../components/BackButton";
 import {
   Container,
@@ -22,24 +21,65 @@ export default function Profile() {
     contact: "",
     profile_pic: null,
   });
-
   const [newProfilePicFile, setNewProfilePicFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState({ type: "", text: "" });
   const [loading, setLoading] = useState(true);
 
-  const token = localStorage.getItem("access");
   const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
+  const access = localStorage.getItem("access");
+  const refresh = localStorage.getItem("refresh");
+  const navigate = useNavigate();
 
-  // Load current profile
+  // ---------- Helper: refresh token ----------
+  const refreshAccessToken = async () => {
+    if (!refresh) {
+      navigate("/login");
+      return null;
+    }
+    try {
+      const res = await fetch(`${API_URL}/api/token/refresh/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh }),
+      });
+      if (!res.ok) throw new Error("refresh failed");
+      const data = await res.json();
+      localStorage.setItem("access", data.access);
+      return data.access;
+    } catch {
+      localStorage.clear();
+      navigate("/login");
+      return null;
+    }
+  };
+
+  const authedFetch = async (url, options = {}) => {
+    const token = localStorage.getItem("access");
+    const doFetch = (tok) =>
+      fetch(url, {
+        ...options,
+        headers: {
+          ...(options.headers || {}),
+          Authorization: `Bearer ${tok}`,
+        },
+      });
+    let res = await doFetch(token);
+    if (res.status === 401) {
+      const newTok = await refreshAccessToken();
+      if (!newTok) return res;
+      res = await doFetch(newTok);
+    }
+    return res;
+  };
+
+  // ---------- Load Profile ----------
   useEffect(() => {
     async function loadProfile() {
       try {
-        const res = await fetch(`${API_URL}/api/profile/`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error("Failed to fetch profile.");
+        const res = await authedFetch(`${API_URL}/api/profile/`);
+        if (!res.ok) throw new Error(`Failed to fetch profile (${res.status})`);
         const data = await res.json();
         setProfile({
           username: data.username || "",
@@ -55,9 +95,9 @@ export default function Profile() {
       }
     }
     loadProfile();
-  }, [API_URL, token]);
+  }, [API_URL]);
 
-  // Handle profile image selection
+  // ---------- Handlers ----------
   const onFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -82,9 +122,8 @@ export default function Profile() {
       form.append("contact", profile.contact);
       if (newProfilePicFile) form.append("profile_pic", newProfilePicFile);
 
-      const res = await fetch(`${API_URL}/api/profile/`, {
+      const res = await authedFetch(`${API_URL}/api/profile/update/`, {
         method: "PATCH",
-        headers: { Authorization: `Bearer ${token}` },
         body: form,
       });
 
@@ -95,14 +134,12 @@ export default function Profile() {
 
       const data = await res.json();
       setMsg({ type: "success", text: "✅ Profile updated successfully!" });
-
       setProfile((p) => ({
         ...p,
         profile_pic: data.profile_pic || p.profile_pic,
       }));
       setNewProfilePicFile(null);
       setPreview(null);
-
     } catch (e) {
       setMsg({ type: "danger", text: `⚠️ ${e.message}` });
     } finally {
@@ -118,12 +155,16 @@ export default function Profile() {
         : `${API_URL}${profile.profile_pic}`
       : "https://placehold.co/150x150/EFEFEF/AAAAAA?text=No+Image");
 
+  // ---------- Render ----------
   return (
     <Container className="my-4">
       <BackButton className="mb-3" />
 
       <Card className="shadow-sm">
-        <Card.Header as="h2" className="d-flex justify-content-between align-items-center">
+        <Card.Header
+          as="h2"
+          className="d-flex justify-content-between align-items-center"
+        >
           👤 My Profile
           <Button as={Link} to="/dashboard" variant="outline-secondary" size="sm">
             <FaArrowLeft className="me-2" /> Back to Dashboard
@@ -132,7 +173,11 @@ export default function Profile() {
 
         <Card.Body className="p-4">
           {msg.text && (
-            <Alert variant={msg.type} onClose={() => setMsg({ type: "", text: "" })} dismissible>
+            <Alert
+              variant={msg.type}
+              onClose={() => setMsg({ type: "", text: "" })}
+              dismissible
+            >
               {msg.text}
             </Alert>
           )}
@@ -157,11 +202,15 @@ export default function Profile() {
                       border: "4px solid #eee",
                     }}
                   />
-
                   <Form.Group controlId="formFile" className="mt-3">
                     <Form.Label className="btn btn-outline-primary btn-sm">
                       📷 Change Photo
-                      <Form.Control type="file" accept="image/*" onChange={onFileChange} hidden />
+                      <Form.Control
+                        type="file"
+                        accept="image/*"
+                        onChange={onFileChange}
+                        hidden
+                      />
                     </Form.Label>
                   </Form.Group>
                 </Col>
