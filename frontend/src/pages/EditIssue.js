@@ -1,287 +1,342 @@
-// frontend/src/pages/EditIssue.js
-import React, { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
-import L from "leaflet";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Container, Row, Col, Card, Button, Spinner, Alert, Badge } from "react-bootstrap";
+import { FaThumbsUp, FaEdit, FaTrash, FaUser, FaCheck, FaHandshake, FaMapMarkerAlt } from "react-icons/fa";
+import IssueMap from "../components/issuemap";
+import SubmitIssue from "./submitissue";
 import BackButton from "../components/BackButton";
-import {
-  Container,
-  Row,
-  Col,
-  Card,
-  Form,
-  Button,
-  Alert,
-  Spinner,
-  InputGroup,
-  ListGroup,
-} from "react-bootstrap";
-import { FaArrowLeft } from "react-icons/fa";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
-// ✅ Fix leaflet marker icons
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: require("leaflet/dist/images/marker-icon-2x.png"),
-  iconUrl: require("leaflet/dist/images/marker-icon.png"),
-  shadowUrl: require("leaflet/dist/images/marker-shadow.png"),
-});
-
-export default function EditIssue() {
-  const { id } = useParams();
+export default function Dashboard() {
   const navigate = useNavigate();
-  const token = localStorage.getItem("access");
 
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    category: "",
-    priority: "Medium",
-    latitude: 0,
-    longitude: 0,
-  });
-
-  const [photo, setPhoto] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-  const [message, setMessage] = useState({ type: "", text: "" });
-  const [submitting, setSubmitting] = useState(false);
+  const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // ✅ Load existing issue data
-  useEffect(() => {
-    fetch(`${API_URL}/api/issues/${id}/`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Could not load issue data.");
-        return res.json();
-      })
-      .then((data) => {
-        setFormData({
-          title: data.title || "",
-          description: data.description || "",
-          category: data.category || "",
-          priority: data.priority || "Medium",
-          latitude: data.latitude || 0,
-          longitude: data.longitude || 0,
-        });
-      })
-      .catch((err) => setMessage({ type: "danger", text: err.message }))
-      .finally(() => setLoading(false));
-  }, [id, token]);
+  const [role, setRole] = useState(localStorage.getItem("role") || "consumer");
+  const [profession, setProfession] = useState(localStorage.getItem("profession") || "");
+  const username = localStorage.getItem("username") || "";
 
-  // ✅ Map marker component
-  function DraggableMarker() {
-    const map = useMapEvents({
-      click(e) {
-        setFormData({ ...formData, latitude: e.latlng.lat, longitude: e.latlng.lng });
-      },
-    });
+  const access = localStorage.getItem("access");
+  const refresh = localStorage.getItem("refresh");
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    useEffect(() => {
-      if (formData.latitude && formData.longitude) {
-        map.flyTo([formData.latitude, formData.longitude], map.getZoom());
-      }
-    }, [map]); // only depend on map (prevents lint warning)
+  const authHeader = useMemo(
+    () => (access ? { Authorization: `Bearer ${access}` } : {}),
+    [access]
+  );
 
-    return (
-      <Marker
-        draggable
-        eventHandlers={{
-          dragend(e) {
-            const latlng = e.target.getLatLng();
-            setFormData({ ...formData, latitude: latlng.lat, longitude: latlng.lng });
-          },
-        }}
-        position={[formData.latitude, formData.longitude]}
-      >
-        <Popup>Drag me or click map to update location</Popup>
-      </Marker>
-    );
-  }
-
-  // ✅ Location search
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!searchQuery) return;
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`
-    );
-    const data = await res.json();
-    setSearchResults(data);
-  };
-
-  const handleSelectLocation = (place) => {
-    setFormData({
-      ...formData,
-      latitude: parseFloat(place.lat),
-      longitude: parseFloat(place.lon),
-    });
-    setSearchQuery(place.display_name);
-    setSearchResults([]);
-  };
-
-  // ✅ Submit changes
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setMessage({ type: "", text: "" });
-
-    const body = new FormData();
-    body.append("title", formData.title);
-    body.append("description", formData.description);
-    body.append("category", formData.category);
-    body.append("priority", formData.priority);
-    body.append("latitude", formData.latitude);
-    body.append("longitude", formData.longitude);
-    if (photo) body.append("photo", photo);
-
+  const refreshAccessToken = async () => {
+    if (!refresh) {
+      localStorage.clear();
+      navigate("/login");
+      return null;
+    }
     try {
-      const res = await fetch(`${API_URL}/api/issues/${id}/`, {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${token}` },
-        body,
+      const res = await fetch(`${API_URL}/api/token/refresh/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh }),
       });
-
-      if (!res.ok) throw new Error("Something went wrong");
-
-      setMessage({ type: "success", text: "✅ Issue updated successfully!" });
-      setTimeout(() => navigate("/dashboard"), 1200);
-    } catch (err) {
-      setMessage({ type: "danger", text: `❌ Failed: ${err.message}` });
-    } finally {
-      setSubmitting(false);
+      if (!res.ok) throw new Error("refresh failed");
+      const data = await res.json();
+      localStorage.setItem("access", data.access);
+      return data.access;
+    } catch {
+      localStorage.clear();
+      navigate("/login");
+      return null;
     }
   };
 
-  // ✅ Loading state
-  if (loading) {
-    return (
-      <Container className="text-center py-5">
-        <Spinner animation="border" />
-        <p className="mt-2">Loading issue details...</p>
-      </Container>
-    );
-  }
+  const authedFetch = async (url, opts = {}) => {
+    const doFetch = async (token) =>
+      fetch(url, {
+        ...opts,
+        headers: {
+          ...(opts.headers || {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : authHeader),
+        },
+      });
 
-  // ✅ Render UI
+    let res = await doFetch();
+    if (res.status === 401) {
+      const newToken = await refreshAccessToken();
+      if (!newToken) return res;
+      res = await doFetch(newToken);
+    }
+    return res;
+  };
+
+  const loadProfile = async () => {
+    try {
+      const res = await authedFetch(`${API_URL}/api/profile/`, { method: "GET" });
+      if (!res.ok) throw new Error(`profile ${res.status}`);
+      const data = await res.json();
+
+      if (data.role) {
+        localStorage.setItem("role", data.role);
+        setRole(data.role);
+      }
+      if (data.profession) {
+        localStorage.setItem("profession", data.profession);
+        setProfession(data.profession);
+      }
+    } catch (e) {
+      console.error("Profile load error:", e);
+      setError((prev) => prev || "Failed to fetch profile.");
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const loadIssues = async () => {
+    setLoading(true);
+    try {
+      const res = await authedFetch(`${API_URL}/api/issues/`, { method: "GET" });
+      if (!res.ok) throw new Error(`issues ${res.status}`);
+      const data = await res.json();
+      setIssues(Array.isArray(data) ? data : data.results || []);
+    } catch (e) {
+      console.error("Issues fetch error:", e);
+      setError("Failed to load issues.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLike = async (id) => {
+    try {
+      const res = await authedFetch(`${API_URL}/api/issues/${id}/like/`, { method: "POST" });
+      if (!res.ok) return;
+      const upd = await res.json();
+      setIssues((prev) => prev.map((i) => (i.id === id ? { ...i, likes_count: upd.likes_count } : i)));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this issue?")) return;
+    try {
+      const res = await authedFetch(`${API_URL}/api/issues/${id}/`, { method: "DELETE" });
+      if (res.ok) setIssues((prev) => prev.filter((i) => i.id !== id));
+    } catch (e) {
+      console.error(e);
+      alert("Failed to delete issue.");
+    }
+  };
+
+  const handleClaim = async (id) => {
+    try {
+      const res = await authedFetch(`${API_URL}/api/issues/${id}/claim/`, { method: "POST" });
+      if (res.ok) await loadIssues();
+      else alert("Unable to claim this issue.");
+    } catch (e) {
+      console.error(e);
+      alert("Error claiming issue.");
+    }
+  };
+
+  const handleMarkResolved = async (id) => {
+    try {
+      const res = await authedFetch(`${API_URL}/api/issues/${id}/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "resolved" }),
+      });
+      if (res.ok) await loadIssues();
+      else alert("Unable to mark resolved.");
+    } catch (e) {
+      console.error(e);
+      alert("Error updating status.");
+    }
+  };
+
+  const handleIssueSubmitted = (newIssue) => {
+    setIssues((prev) => [newIssue, ...prev]);
+  };
+
+  useEffect(() => {
+    if (!access || !refresh) {
+      navigate("/login");
+      return;
+    }
+    (async () => {
+      await loadProfile();
+      await loadIssues();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const titleForList = role === "provider" ? "🛠️ Issues Needing Your Attention" : "📌 My Issues";
+
   return (
-    <Container className="my-4">
+    <Container className="py-4">
       <BackButton />
 
-      <Card className="shadow-sm">
-        <Card.Header as="h2" className="d-flex justify-content-between align-items-center">
-          ✏️ Edit Issue
-          <Button as={Link} to="/dashboard" variant="outline-secondary" size="sm">
-            <FaArrowLeft className="me-2" /> Back to Dashboard
-          </Button>
-        </Card.Header>
-
-        <Card.Body className="p-4">
-          {message.text && (
-            <Alert variant={message.type} dismissible onClose={() => setMessage({ type: "", text: "" })}>
-              {message.text}
-            </Alert>
-          )}
-
-          <Form onSubmit={handleSubmit}>
-            <Row>
-              <Form.Group as={Col} md="8" className="mb-3">
-                <Form.Label>Title</Form.Label>
-                <Form.Control
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  required
-                />
-              </Form.Group>
-
-              <Form.Group as={Col} md="4" className="mb-3">
-                <Form.Label>Priority</Form.Label>
-                <Form.Select
-                  value={formData.priority}
-                  onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                >
-                  <option>Low</option>
-                  <option>Medium</option>
-                  <option>High</option>
-                </Form.Select>
-              </Form.Group>
-            </Row>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Description</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={4}
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                required
-              />
-            </Form.Group>
-
-            <Row>
-              <Form.Group as={Col} md="6" className="mb-3">
-                <Form.Label>Category</Form.Label>
-                <Form.Control
-                  type="text"
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                />
-              </Form.Group>
-
-              <Form.Group as={Col} md="6" className="mb-3">
-                <Form.Label>Upload New Photo</Form.Label>
-                <Form.Control type="file" onChange={(e) => setPhoto(e.target.files[0])} />
-              </Form.Group>
-            </Row>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Search Location</Form.Label>
-              <InputGroup>
-                <Form.Control
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search for an address..."
-                />
-                <Button variant="outline-secondary" onClick={handleSearch}>
-                  Search
-                </Button>
-              </InputGroup>
-            </Form.Group>
-
-            {searchResults.length > 0 && (
-              <ListGroup className="mb-3">
-                {searchResults.map((place) => (
-                  <ListGroup.Item key={place.place_id} action onClick={() => handleSelectLocation(place)}>
-                    {place.display_name}
-                  </ListGroup.Item>
-                ))}
-              </ListGroup>
+      <Row className="justify-content-between align-items-center mb-4">
+        <Col>
+          <h1 className="h2 fw-bold d-flex align-items-center gap-2">
+            📋 Dashboard
+            {role === "provider" && (
+              <Badge bg="info" pill title={profession || "Provider"}>
+                {profession || "provider"}
+              </Badge>
             )}
+          </h1>
+        </Col>
+        <Col xs="auto">
+          <Button as={Link} to="/profile" variant="primary">
+            <FaUser className="me-2" /> Profile
+          </Button>
+        </Col>
+      </Row>
 
-            <div style={{ height: "400px" }} className="mb-3">
-              <MapContainer
-                center={[formData.latitude || 0, formData.longitude || 0]}
-                zoom={15}
-                style={{ height: "100%" }}
-              >
-                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                <DraggableMarker />
-              </MapContainer>
-            </div>
+      {error && <Alert variant="danger">{error}</Alert>}
 
-            <Button type="submit" variant="primary" disabled={submitting}>
-              {submitting ? "Saving…" : "💾 Save Changes"}
-            </Button>
-          </Form>
-        </Card.Body>
-      </Card>
+      {role === "consumer" && (
+        <Card className="mb-4 shadow-sm">
+          <Card.Body className="p-4">
+            <h3 className="h5 mb-3">➕ Submit a New Issue</h3>
+            <SubmitIssue onSubmitted={handleIssueSubmitted} />
+          </Card.Body>
+        </Card>
+      )}
+
+      <h2 className="h4 mt-4 mb-3">{titleForList}</h2>
+
+      {loading || profileLoading ? (
+        <div className="text-center py-4">
+          <Spinner animation="border" role="status" />
+          <p className="mt-2">Loading your feed…</p>
+        </div>
+      ) : issues.length === 0 ? (
+        <Alert variant="info">
+          {role === "provider"
+            ? "No issues match your profession right now."
+            : "No issues submitted yet. Be the first to report one!"}
+        </Alert>
+      ) : (
+        <Row>
+          {issues.map((issue) => {
+            const youAssigned =
+              issue.assigned_to &&
+              (issue.assigned_to.username === username || issue.assigned_to === username);
+
+            return (
+              <Col md={6} lg={4} key={issue.id} className="mb-4">
+                <Card className="shadow-sm h-100">
+                  {issue.photo && (
+                    <Card.Img
+                      variant="top"
+                      src={`${API_URL}${issue.photo}`}
+                      style={{ height: 200, objectFit: "cover" }}
+                      alt={issue.title}
+                    />
+                  )}
+                  <Card.Body className="d-flex flex-column">
+                    <Card.Title className="fw-bold d-flex align-items-center gap-2">
+                      {issue.title}
+                      {youAssigned && (
+                        <Badge bg="secondary" title="Assigned to you">
+                          <FaHandshake className="me-1" />
+                          yours
+                        </Badge>
+                      )}
+                    </Card.Title>
+
+                    <Card.Subtitle className="mb-2 text-muted small">
+                      <strong>Priority:</strong> {issue.priority} · <strong>Status:</strong>{" "}
+                      <Badge
+                        bg={
+                          issue.status === "resolved"
+                            ? "success"
+                            : issue.status === "in_progress"
+                            ? "warning"
+                            : "secondary"
+                        }
+                      >
+                        {issue.status}
+                      </Badge>
+                    </Card.Subtitle>
+
+                    <div className="small mb-2">
+                      <div>
+                        <strong>Reported by:</strong> {issue.reporter_name || "Anonymous"}
+                      </div>
+
+                      {issue.location && (
+                        <div className="d-flex align-items-center gap-1">
+                          <FaMapMarkerAlt /> <span>{issue.location}</span>
+                        </div>
+                      )}
+
+                      {typeof issue.distance_km === "number" && (
+                        <div className="text-muted">~{issue.distance_km} km away</div>
+                      )}
+
+                      <div className="text-muted">
+                        ⏰ {issue.created_at ? new Date(issue.created_at).toLocaleString() : ""}
+                      </div>
+                    </div>
+
+                    <div className="mb-3">👍 {issue.likes_count || 0} likes</div>
+
+                    <div className="mt-auto">
+                      <div className="d-flex flex-wrap gap-2">
+                        <Button variant="success" size="sm" onClick={() => handleLike(issue.id)}>
+                          <FaThumbsUp className="me-1" /> Like
+                        </Button>
+
+                        {role === "consumer" && (
+                          <>
+                            <Button as={Link} to={`/issues/${issue.id}/edit`} variant="warning" size="sm">
+                              <FaEdit className="me-1" /> Edit
+                            </Button>
+                            <Button variant="danger" size="sm" onClick={() => handleDelete(issue.id)}>
+                              <FaTrash className="me-1" /> Delete
+                            </Button>
+                          </>
+                        )}
+
+                        {role === "provider" && (
+                          <>
+                            {!issue.assigned_to && issue.status !== "resolved" && (
+                              <Button className="flex-fill" variant="info" size="sm" onClick={() => handleClaim(issue.id)}>
+                                <FaHandshake className="me-1" />
+                                Claim
+                              </Button>
+                            )}
+
+                            {youAssigned && issue.status !== "resolved" && (
+                              <Button
+                                className="flex-fill"
+                                variant="success"
+                                size="sm"
+                                onClick={() => handleMarkResolved(issue.id)}
+                              >
+                                <FaCheck className="me-1" /> Mark Resolved
+                              </Button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </Card.Body>
+                </Card>
+              </Col>
+            );
+          })}
+        </Row>
+      )}
+
+      <div className="mt-5">
+        <h2 className="h4">🗺️ View Issues on Map</h2>
+        <IssueMap issues={issues} />
+      </div>
     </Container>
   );
 }

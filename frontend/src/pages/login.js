@@ -1,4 +1,3 @@
-// frontend/src/pages/Login.js
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import BackButton from "../components/BackButton";
@@ -31,7 +30,6 @@ function Login() {
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
-  // ---------------- LOGIN ----------------
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -39,7 +37,6 @@ function Login() {
     setSubmitting(true);
 
     try {
-      // Step 1: Request tokens
       const res = await fetch(`${API_URL}/api/token/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -47,22 +44,22 @@ function Login() {
       });
 
       const data = await res.json();
+
       if (!res.ok) {
         setError(data.detail || "Invalid login credentials.");
         setSubmitting(false);
         return;
       }
 
-      // Save tokens
       localStorage.setItem("access", data.access);
       localStorage.setItem("refresh", data.refresh);
 
-      // Step 2: Fetch profile
       const profileRes = await fetch(`${API_URL}/api/accounts/me/`, {
         headers: { Authorization: `Bearer ${data.access}` },
       });
 
       const profile = await profileRes.json();
+
       if (profileRes.ok) {
         localStorage.setItem("username", profile.username);
         localStorage.setItem("role", profile.role);
@@ -81,7 +78,6 @@ function Login() {
     }
   };
 
-  // ---------------- PASSWORD RESET ----------------
   const handlePasswordReset = async (e) => {
     e.preventDefault();
     setResetMsg("");
@@ -94,23 +90,23 @@ function Login() {
       });
 
       const data = await res.json();
-      setResetMsg(
-        res.ok
-          ? "✅ Password reset link sent to your email."
-          : data.detail || "⚠️ Unable to send reset email."
-      );
-    } catch {
+
+      if (res.ok) {
+        setResetMsg("✅ Password reset link sent to your email.");
+      } else {
+        setResetMsg(data.detail || "⚠️ Unable to send reset email.");
+      }
+    } catch (err) {
+      console.error(err);
       setResetMsg("⚠️ Server error. Please try again.");
     }
   };
 
   return (
     <Container
-      className="d-flex flex-column align-items-center justify-content-center"
-      style={{ minHeight: "90vh" }}
+      className="d-flex align-items-center justify-content-center"
+      style={{ minHeight: "80vh" }}
     >
-      <BackButton className="align-self-start mb-3" />
-
       <Row className="w-100">
         <Col md={6} lg={5} xl={4} className="mx-auto">
           <Card className="shadow-sm">
@@ -130,6 +126,7 @@ function Login() {
                     onChange={handleChange}
                     placeholder="Enter username"
                     required
+                    autoComplete="username"
                   />
                 </Form.Group>
 
@@ -142,6 +139,7 @@ function Login() {
                     onChange={handleChange}
                     placeholder="Enter password"
                     required
+                    autoComplete="current-password"
                   />
                 </Form.Group>
 
@@ -149,12 +147,7 @@ function Login() {
                   <Button type="submit" variant="primary" disabled={submitting}>
                     {submitting ? (
                       <>
-                        <Spinner
-                          as="span"
-                          animation="border"
-                          size="sm"
-                          className="me-2"
-                        />
+                        <Spinner as="span" animation="border" size="sm" className="me-2" />
                         Logging In...
                       </>
                     ) : (
@@ -166,7 +159,7 @@ function Login() {
 
               <div className="text-center mt-3">
                 <small>
-                  Forgot password?{" "}
+                  Forgot your password?{" "}
                   <Button
                     variant="link"
                     className="p-0 text-decoration-underline"
@@ -187,7 +180,6 @@ function Login() {
         </Col>
       </Row>
 
-      {/* Reset Password Modal */}
       <Modal show={showModal} onHide={() => setShowModal(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>Reset Password</Modal.Title>
@@ -202,6 +194,7 @@ function Login() {
                 onChange={(e) => setResetEmail(e.target.value)}
                 placeholder="Enter your registered email"
                 required
+                autoComplete="email"
               />
             </Form.Group>
 
@@ -211,10 +204,7 @@ function Login() {
           </Form>
 
           {resetMsg && (
-            <Alert
-              className="mt-3"
-              variant={resetMsg.includes("✅") ? "success" : "danger"}
-            >
+            <Alert className="mt-3" variant={resetMsg.includes("✅") ? "success" : "danger"}>
               {resetMsg}
             </Alert>
           )}

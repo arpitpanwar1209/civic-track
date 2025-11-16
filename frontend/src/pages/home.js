@@ -1,197 +1,276 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Container, Row, Col, Card, Button, Spinner, Alert } from "react-bootstrap";
-import { Link } from "react-router-dom";
-import { useTypewriter, Cursor } from "react-simple-typewriter";
-import { FaPaperPlane, FaPhone, FaEnvelope } from "react-icons/fa";
-import "./home.css";
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
 import BackButton from "../components/BackButton";
+import {
+  Container,
+  Row,
+  Col,
+  Card,
+  Form,
+  Button,
+  Alert,
+  Spinner,
+  InputGroup,
+  ListGroup,
+} from "react-bootstrap";
+import { FaArrowLeft } from "react-icons/fa";
 
-export default function Home() {
-  const [nearbyIssues, setNearbyIssues] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
-  const role = localStorage.getItem("role");
+// Fix leaflet marker icons
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: require("leaflet/dist/images/marker-icon-2x.png"),
+  iconUrl: require("leaflet/dist/images/marker-icon.png"),
+  shadowUrl: require("leaflet/dist/images/marker-shadow.png"),
+});
+
+export default function EditIssue() {
+  const { id } = useParams();
+  const navigate = useNavigate();
   const token = localStorage.getItem("access");
-  const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
-  const [headlineText] = useTypewriter({
-    words: ["Report Civic Issues.", "Get Solutions.", "Make a Difference."],
-    loop: {},
-    typeSpeed: 120,
-    deleteSpeed: 80,
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    category: "",
+    priority: "Medium",
+    latitude: 0,
+    longitude: 0,
   });
 
-  // ✅ useCallback ensures handleSuccess and handleError don't change on each render
-  const handleSuccess = useCallback(
-    ({ coords }) => {
-      const { latitude, longitude } = coords;
+  const [photo, setPhoto] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [message, setMessage] = useState({ type: "", text: "" });
+  const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-      fetch(`${API_URL}/api/issues/?nearby=${latitude},${longitude}&radius_km=5`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
-        .then((res) => {
-          if (!res.ok) throw new Error("Could not fetch issues");
-          return res.json();
-        })
-        .then((data) => {
-          setNearbyIssues(Array.isArray(data) ? data : data.results || []);
-        })
-        .catch(() => setError("Could not load nearby issues."))
-        .finally(() => setLoading(false));
-    },
-    [API_URL, token]
-  );
-
-  const handleError = useCallback(() => {
-    setError("Please enable location access to see nearby issues.");
-    setLoading(false);
-  }, []);
-
-  // ✅ Safe useEffect (ESLint compliant)
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setError("Your browser does not support location access.");
-      setLoading(false);
-      return;
+    fetch(`${API_URL}/api/issues/${id}/`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Could not load issue data.");
+        return res.json();
+      })
+      .then((data) => {
+        setFormData({
+          title: data.title || "",
+          description: data.description || "",
+          category: data.category || "",
+          priority: data.priority || "Medium",
+          latitude: data.latitude || 0,
+          longitude: data.longitude || 0,
+        });
+      })
+      .catch((err) => setMessage({ type: "danger", text: err.message }))
+      .finally(() => setLoading(false));
+  }, [id, token]);
+
+  function DraggableMarker() {
+    const map = useMapEvents({
+      click(e) {
+        setFormData({ ...formData, latitude: e.latlng.lat, longitude: e.latlng.lng });
+      },
+    });
+
+    useEffect(() => {
+      if (formData.latitude && formData.longitude) {
+        map.flyTo([formData.latitude, formData.longitude], map.getZoom());
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [formData.latitude, formData.longitude]);
+
+    return (
+      <Marker
+        draggable
+        eventHandlers={{
+          dragend(e) {
+            const latlng = e.target.getLatLng();
+            setFormData({ ...formData, latitude: latlng.lat, longitude: latlng.lng });
+          },
+        }}
+        position={[formData.latitude, formData.longitude]}
+      >
+        <Popup>Drag me or click map to update location</Popup>
+      </Marker>
+    );
+  }
+
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!searchQuery) return;
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`
+    );
+    const data = await res.json();
+    setSearchResults(data);
+  };
+
+  const handleSelectLocation = (place) => {
+    setFormData({
+      ...formData,
+      latitude: parseFloat(place.lat),
+      longitude: parseFloat(place.lon),
+    });
+    setSearchQuery(place.display_name);
+    setSearchResults([]);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setMessage({ type: "", text: "" });
+
+    const body = new FormData();
+    body.append("title", formData.title);
+    body.append("description", formData.description);
+    body.append("category", formData.category);
+    body.append("priority", formData.priority);
+    body.append("latitude", formData.latitude);
+    body.append("longitude", formData.longitude);
+    if (photo) body.append("photo", photo);
+
+    try {
+      const res = await fetch(`${API_URL}/api/issues/${id}/`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body,
+      });
+
+      if (!res.ok) throw new Error("Something went wrong");
+
+      setMessage({ type: "success", text: "✅ Issue updated successfully!" });
+      setTimeout(() => navigate("/dashboard"), 1200);
+    } catch (err) {
+      setMessage({ type: "danger", text: `❌ Failed: ${err.message}` });
+    } finally {
+      setSubmitting(false);
     }
-    navigator.geolocation.getCurrentPosition(handleSuccess, handleError);
-  }, [handleSuccess, handleError]);
+  };
+
+  if (loading) {
+    return (
+      <Container className="text-center py-5">
+        <Spinner animation="border" />
+        <p className="mt-2">Loading issue details...</p>
+      </Container>
+    );
+  }
 
   return (
-    <div>
-      {/* 🌆 HERO SECTION */}
-      <div className="hero-section bg-dark text-white text-center d-flex flex-column justify-content-center align-items-center">
-        <div className="hero-overlay"></div>
+    <Container className="my-4">
+      <BackButton />
 
-        <Container style={{ position: "relative", zIndex: 2 }}>
-          <h1 className="display-4 fw-bold">
-            Your City, Your Voice.
-            <br />
-            <span>{headlineText}</span>
-            <Cursor />
-          </h1>
+      <Card className="shadow-sm">
+        <Card.Header as="h2" className="d-flex justify-content-between align-items-center">
+          ✏️ Edit Issue
+          <Button as={Link} to="/dashboard" variant="outline-secondary" size="sm">
+            <FaArrowLeft className="me-2" /> Back to Dashboard
+          </Button>
+        </Card.Header>
 
-          <p className="lead mt-3">
-            Spot a problem? Report potholes, water leaks, garbage issues & more.
-          </p>
+        <Card.Body className="p-4">
+          {message.text && (
+            <Alert variant={message.type} dismissible onClose={() => setMessage({ type: "", text: "" })}>
+              {message.text}
+            </Alert>
+          )}
 
-          <div className="mt-4">
-            {role === "consumer" && (
-              <>
-                <Button
-                  as={Link}
-                  to="/dashboard"
-                  variant="warning"
-                  size="lg"
-                  className="me-3 pulse-button"
+          <Form onSubmit={handleSubmit}>
+            <Row>
+              <Form.Group as={Col} md="8" className="mb-3">
+                <Form.Label>Title</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  required
+                />
+              </Form.Group>
+
+              <Form.Group as={Col} md="4" className="mb-3">
+                <Form.Label>Priority</Form.Label>
+                <Form.Select
+                  value={formData.priority}
+                  onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                 >
-                  🚀 Report an Issue
+                  <option>Low</option>
+                  <option>Medium</option>
+                  <option>High</option>
+                </Form.Select>
+              </Form.Group>
+            </Row>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Description</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={4}
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                required
+              />
+            </Form.Group>
+
+            <Row>
+              <Form.Group as={Col} md="6" className="mb-3">
+                <Form.Label>Category</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                />
+              </Form.Group>
+
+              <Form.Group as={Col} md="6" className="mb-3">
+                <Form.Label>Upload New Photo</Form.Label>
+                <Form.Control type="file" onChange={(e) => setPhoto(e.target.files[0])} />
+              </Form.Group>
+            </Row>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Search Location</Form.Label>
+              <InputGroup>
+                <Form.Control
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search for an address..."
+                />
+                <Button variant="outline-secondary" onClick={handleSearch}>
+                  Search
                 </Button>
+              </InputGroup>
+            </Form.Group>
 
-                <Button as={Link} to="/dashboard" variant="outline-light" size="lg">
-                  📋 View My Reports
-                </Button>
-              </>
+            {searchResults.length > 0 && (
+              <ListGroup className="mb-3">
+                {searchResults.map((place) => (
+                  <ListGroup.Item key={place.place_id} action onClick={() => handleSelectLocation(place)}>
+                    {place.display_name}
+                  </ListGroup.Item>
+                ))}
+              </ListGroup>
             )}
 
-            {role === "provider" && (
-              <Button as={Link} to="/dashboard" variant="info" size="lg" className="pulse-button">
-                🛠️ View Issues to Resolve
-              </Button>
-            )}
+            <div style={{ height: "400px" }} className="mb-3">
+              <MapContainer center={[formData.latitude || 0, formData.longitude || 0]} zoom={15} style={{ height: "100%" }}>
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                <DraggableMarker />
+              </MapContainer>
+            </div>
 
-            {!role && (
-              <Button as={Link} to="/login" variant="warning" size="lg" className="pulse-button">
-                🔐 Login to Get Started
-              </Button>
-            )}
-          </div>
-        </Container>
-      </div>
-
-      {/* 🔙 Back Navigation */}
-      <Container className="mt-3">
-        <BackButton />
-      </Container>
-
-      {/* 📍 NEARBY ISSUES */}
-      <Container className="py-5">
-        <h2 className="text-center fw-bold mb-5">📍 Issues Near You</h2>
-
-        {loading ? (
-          <div className="text-center">
-            <Spinner animation="border" />
-            <p>Fetching location...</p>
-          </div>
-        ) : error ? (
-          <Alert variant="warning">{error}</Alert>
-        ) : nearbyIssues.length === 0 ? (
-          <Alert variant="info">No issues reported nearby yet.</Alert>
-        ) : (
-          <Row>
-            {nearbyIssues.slice(0, 3).map((issue) => (
-              <Col md={4} key={issue.id} className="mb-4">
-                <Card className="h-100 shadow-sm issue-card">
-                  {issue.photo && (
-                    <Card.Img
-                      variant="top"
-                      src={`${API_URL}${issue.photo}`}
-                      className="issue-card-img"
-                      alt={issue.title}
-                    />
-                  )}
-                  <Card.Body>
-                    <Card.Title className="fw-bold">{issue.title}</Card.Title>
-                    <Card.Subtitle className="text-muted small mb-2">
-                      Status: {issue.status}
-                    </Card.Subtitle>
-                    <Card.Text className="small">
-                      {issue.description?.substring(0, 100)}...
-                    </Card.Text>
-                    <Button as={Link} to="/dashboard" variant="primary" size="sm">
-                      View Details
-                    </Button>
-                  </Card.Body>
-                </Card>
-              </Col>
-            ))}
-          </Row>
-        )}
-      </Container>
-
-      {/* 📞 CONTACT SECTION */}
-      <div className="bg-light">
-        <Container className="py-5 text-center">
-          <h2 className="fw-bold mb-4">Need Urgent Help?</h2>
-          <p className="lead mb-4">Use these resources for emergency or municipal support.</p>
-          <Row>
-            <Col md={4}>
-              <Card className="contact-card p-3">
-                <FaPaperPlane size={30} className="mb-2" />
-                <h5 className="fw-bold">Municipal Portal</h5>
-                <p>Visit your local municipal services website.</p>
-              </Card>
-            </Col>
-
-            <Col md={4}>
-              <Card className="contact-card p-3">
-                <FaPhone size={30} className="mb-2" />
-                <h5 className="fw-bold">Emergency Helpline</h5>
-                <p>Call 112 for urgent help.</p>
-              </Card>
-            </Col>
-
-            <Col md={4}>
-              <Card className="contact-card p-3">
-                <FaEnvelope size={30} className="mb-2" />
-                <h5 className="fw-bold">Email Support</h5>
-                <p>support@civictrack.org</p>
-              </Card>
-            </Col>
-          </Row>
-        </Container>
-      </div>
-    </div>
+            <Button type="submit" variant="primary" disabled={submitting}>
+              {submitting ? "Saving…" : "💾 Save Changes"}
+            </Button>
+          </Form>
+        </Card.Body>
+      </Card>
+    </Container>
   );
 }

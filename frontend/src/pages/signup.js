@@ -1,4 +1,3 @@
-// frontend/src/pages/Signup.js
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import BackButton from "../components/BackButton";
@@ -29,8 +28,7 @@ function Signup() {
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
 
-  const handleChange = (e) =>
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -39,7 +37,9 @@ function Signup() {
     setSubmitting(true);
 
     const payload = { ...formData };
-    if (payload.role === "consumer") delete payload.profession;
+    if (payload.role === "consumer") {
+      delete payload.profession;
+    }
 
     try {
       const res = await fetch(`${API_URL}/api/accounts/signup/`, {
@@ -69,7 +69,6 @@ function Signup() {
           localStorage.setItem("refresh", loginData.refresh);
           localStorage.setItem("username", formData.username);
           localStorage.setItem("role", formData.role);
-          localStorage.setItem("profession", formData.profession || "");
 
           setTimeout(() => navigate("/dashboard"), 1200);
         } else {
@@ -93,9 +92,7 @@ function Signup() {
   };
 
   return (
-    <Container className="d-flex flex-column align-items-start justify-content-center" style={{ minHeight: "85vh" }}>
-      <BackButton className="mb-3" />
-
+    <Container className="d-flex align-items-center justify-content-center" style={{ minHeight: "80vh" }}>
       <Row className="w-100">
         <Col md={6} lg={5} xl={4} className="mx-auto">
           <Card className="shadow-sm">
@@ -106,37 +103,19 @@ function Signup() {
               {error && <Alert variant="danger">{error}</Alert>}
 
               <Form onSubmit={handleSubmit}>
-                
                 <Form.Group className="mb-3">
                   <Form.Label>Username</Form.Label>
-                  <Form.Control
-                    name="username"
-                    value={formData.username}
-                    onChange={handleChange}
-                    required
-                  />
+                  <Form.Control name="username" value={formData.username} onChange={handleChange} required autoComplete="username" />
                 </Form.Group>
 
                 <Form.Group className="mb-3">
                   <Form.Label>Email</Form.Label>
-                  <Form.Control
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                  />
+                  <Form.Control type="email" name="email" value={formData.email} onChange={handleChange} required autoComplete="email" />
                 </Form.Group>
 
                 <Form.Group className="mb-3">
                   <Form.Label>Password</Form.Label>
-                  <Form.Control
-                    type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    required
-                  />
+                  <Form.Control type="password" name="password" value={formData.password} onChange={handleChange} required autoComplete="new-password" />
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -177,7 +156,6 @@ function Signup() {
                   Already have an account? <Link to="/login">Log In</Link>
                 </small>
               </div>
-
             </Card.Body>
           </Card>
         </Col>

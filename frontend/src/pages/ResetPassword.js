@@ -1,4 +1,3 @@
-// frontend/src/pages/ResetPassword.js
 import { useParams, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import BackButton from "../components/BackButton";
@@ -46,17 +45,13 @@ export default function ResetPassword() {
 
   return (
     <Container className="py-5" style={{ maxWidth: 500 }}>
-      <BackButton className="mb-3" />
+      <BackButton />
 
       <Card className="shadow-sm">
         <Card.Body>
           <h3 className="fw-bold mb-3 text-center">🔐 Reset Password</h3>
 
-          {msg && (
-            <Alert variant={msg.includes("✅") ? "success" : "danger"}>
-              {msg}
-            </Alert>
-          )}
+          {msg && <Alert variant={msg.includes("✅") ? "success" : "danger"}>{msg}</Alert>}
 
           <Form>
             <Form.Group className="mb-3">
@@ -67,23 +62,14 @@ export default function ResetPassword() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                autoComplete="new-password"
               />
             </Form.Group>
 
-            <Button
-              className="w-100"
-              variant="primary"
-              onClick={submit}
-              disabled={loading}
-            >
+            <Button className="w-100" variant="primary" onClick={submit} disabled={loading}>
               {loading ? (
                 <>
-                  <Spinner
-                    as="span"
-                    animation="border"
-                    size="sm"
-                    className="me-2"
-                  />
+                  <Spinner as="span" animation="border" size="sm" className="me-2" />
                   Updating...
                 </>
               ) : (

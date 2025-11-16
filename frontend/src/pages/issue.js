@@ -1,4 +1,3 @@
-// frontend/src/pages/Issue.js
 import React, { useState, useEffect } from "react";
 import BackButton from "../components/BackButton";
 import { Container, Spinner, Alert, ListGroup } from "react-bootstrap";
