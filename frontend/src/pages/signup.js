@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import BackButton from "../components/BackButton";
 import {
   Container,
   Row,
@@ -14,7 +13,7 @@ import {
 
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
-function Signup() {
+export default function Signup() {
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -28,7 +27,8 @@ function Signup() {
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e) =>
+    setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,11 +37,16 @@ function Signup() {
     setSubmitting(true);
 
     const payload = { ...formData };
+
+    // Providers must select a profession
     if (payload.role === "consumer") {
       delete payload.profession;
     }
 
     try {
+      // ---------------------------------
+      // 1️⃣ SIGNUP API CALL
+      // ---------------------------------
       const res = await fetch(`${API_URL}/api/accounts/signup/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -50,41 +55,48 @@ function Signup() {
 
       const data = await res.json();
 
-      if (res.ok) {
-        setSuccess("🎉 Account created successfully! Logging you in...");
-
-        const loginRes = await fetch(`${API_URL}/api/token/`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            username: formData.username,
-            password: formData.password,
-          }),
-        });
-
-        const loginData = await loginRes.json();
-
-        if (loginRes.ok) {
-          localStorage.setItem("access", loginData.access);
-          localStorage.setItem("refresh", loginData.refresh);
-          localStorage.setItem("username", formData.username);
-          localStorage.setItem("role", formData.role);
-
-          setTimeout(() => navigate("/dashboard"), 1200);
-        } else {
-          setTimeout(() => navigate("/login"), 1500);
-        }
-      } else {
-        const errorMessages =
+      if (!res.ok) {
+        const msg =
           typeof data === "object"
             ? Object.entries(data)
-                .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
+                .map(([k, v]) =>
+                  Array.isArray(v) ? `${k}: ${v.join(", ")}` : `${k}: ${v}`
+                )
                 .join("; ")
             : data.detail || "Signup failed.";
-        setError(errorMessages);
+        setError(msg);
+        setSubmitting(false);
+        return;
+      }
+
+      setSuccess("🎉 Account created successfully! Logging you in...");
+
+      // ---------------------------------
+      // 2️⃣ AUTO LOGIN AFTER SIGNUP
+      // ---------------------------------
+      const loginRes = await fetch(`${API_URL}/api/token/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: formData.username,
+          password: formData.password,
+        }),
+      });
+
+      const loginData = await loginRes.json();
+
+      if (loginRes.ok) {
+        localStorage.setItem("access", loginData.access);
+        localStorage.setItem("refresh", loginData.refresh);
+        localStorage.setItem("username", formData.username);
+        localStorage.setItem("role", formData.role);
+
+        setTimeout(() => navigate("/dashboard"), 1200);
+      } else {
+        setTimeout(() => navigate("/login"), 1500);
       }
     } catch (err) {
-      console.error("❌ Signup error:", err);
+      console.error("Signup error:", err);
       setError("Connection failed. Please try again.");
     } finally {
       setSubmitting(false);
@@ -92,7 +104,10 @@ function Signup() {
   };
 
   return (
-    <Container className="d-flex align-items-center justify-content-center" style={{ minHeight: "80vh" }}>
+    <Container
+      className="d-flex align-items-center justify-content-center"
+      style={{ minHeight: "80vh" }}
+    >
       <Row className="w-100">
         <Col md={6} lg={5} xl={4} className="mx-auto">
           <Card className="shadow-sm">
@@ -105,22 +120,46 @@ function Signup() {
               <Form onSubmit={handleSubmit}>
                 <Form.Group className="mb-3">
                   <Form.Label>Username</Form.Label>
-                  <Form.Control name="username" value={formData.username} onChange={handleChange} required autoComplete="username" />
+                  <Form.Control
+                    name="username"
+                    value={formData.username}
+                    onChange={handleChange}
+                    required
+                    autoComplete="username"
+                  />
                 </Form.Group>
 
                 <Form.Group className="mb-3">
                   <Form.Label>Email</Form.Label>
-                  <Form.Control type="email" name="email" value={formData.email} onChange={handleChange} required autoComplete="email" />
+                  <Form.Control
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                    autoComplete="email"
+                  />
                 </Form.Group>
 
                 <Form.Group className="mb-3">
                   <Form.Label>Password</Form.Label>
-                  <Form.Control type="password" name="password" value={formData.password} onChange={handleChange} required autoComplete="new-password" />
+                  <Form.Control
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    required
+                    autoComplete="new-password"
+                  />
                 </Form.Group>
 
                 <Form.Group className="mb-3">
                   <Form.Label>I am a</Form.Label>
-                  <Form.Select name="role" value={formData.role} onChange={handleChange}>
+                  <Form.Select
+                    name="role"
+                    value={formData.role}
+                    onChange={handleChange}
+                  >
                     <option value="consumer">Consumer (Report Issues)</option>
                     <option value="provider">Provider (Fix Issues)</option>
                   </Form.Select>
@@ -147,7 +186,11 @@ function Signup() {
                 )}
 
                 <Button type="submit" className="w-100" disabled={submitting}>
-                  {submitting ? <Spinner animation="border" size="sm" /> : "Sign Up"}
+                  {submitting ? (
+                    <Spinner animation="border" size="sm" />
+                  ) : (
+                    "Sign Up"
+                  )}
                 </Button>
               </Form>
 
@@ -163,5 +206,3 @@ function Signup() {
     </Container>
   );
 }
-
-export default Signup;

@@ -1,39 +1,31 @@
-# backend/urls.py
 from django.contrib import admin
 from django.urls import path, include
-from civictrack.views import home
-from rest_framework.routers import DefaultRouter
-from reports.views import IssueViewSet, FlagReportViewSet
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import JsonResponse
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-# ✅ REST Framework Routers
-router = DefaultRouter()
-router.register(r"issues", IssueViewSet, basename="issue")
-router.register(r"flags", FlagReportViewSet, basename="flag")
+# Simple health-check used by deployments / frontend
+def health_check(request):
+    return JsonResponse({"status": "ok", "message": "CivicTrack API is running"})
 
 urlpatterns = [
-    # Admin panel
-    path("admin/", admin.site.urls),
+    # Root / health
+    path("", health_check, name="home"),
 
-    # Landing page
-    path("", home, name="home"),
+    # Admin (use a non-standard path in production)
+    path("superadmin/", admin.site.urls),
 
-    # Accounts (Signup, Login, Profile, Reset Password)
-    path("api/", include("accounts.urls")),  # ✅ handles /signup, /login, /profile, etc.
+    # API (versioned)
+    path("api/v1/accounts/", include("accounts.urls")),
+    path("api/v1/reports/", include("reports.urls")),
+      # optional: create moderation app urls if used
 
-    # Reports (issues, flags)
-    path("api/", include(router.urls)),      # ✅ handles /issues/, /flags/
-
-    # JWT Authentication
-    path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
-    path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
-
-    # DRF browsable API (optional)
-    path("api/auth/", include("rest_framework.urls")),
+    # JWT token endpoints (kept at api root for convenience)
+    path("api/v1/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("api/v1/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
 ]
 
-# Serve uploaded files in DEBUG
+# Serve media files during development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

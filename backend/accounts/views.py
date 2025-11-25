@@ -7,40 +7,39 @@ from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes
 
+from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from django.contrib.auth import get_user_model
 from .serializers import RegisterSerializer, UserSerializer, UserProfileSerializer
 
 User = get_user_model()
 
 
-# ---------------------------------
-# Signup
-# ---------------------------------
+# ---------------------------------------------------------
+# Registration
+# ---------------------------------------------------------
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
 
 
-# ---------------------------------
-# Custom Login (JWT with extra data)
-# ---------------------------------
+# ---------------------------------------------------------
+# Custom JWT Login with Extra Payload
+# ---------------------------------------------------------
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
 
-        # ✅ Add extra user info inside JWT token (frontend will read this)
+        # Extra data inside token
         token["username"] = user.username
         token["role"] = user.role
         token["profession"] = user.profession
 
         return token
 
-    # ✅ Also include extra info in login response, not just token
     def validate(self, attrs):
         data = super().validate(attrs)
         data["username"] = self.user.username
@@ -53,9 +52,9 @@ class LoginView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
 
-# ---------------------------------
-# Profile (Read)
-# ---------------------------------
+# ---------------------------------------------------------
+# Profile (View)
+# ---------------------------------------------------------
 class UserProfileView(generics.RetrieveAPIView):
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -64,9 +63,9 @@ class UserProfileView(generics.RetrieveAPIView):
         return self.request.user
 
 
-# ---------------------------------
+# ---------------------------------------------------------
 # Profile (Update)
-# ---------------------------------
+# ---------------------------------------------------------
 class UserProfileUpdateView(generics.RetrieveUpdateAPIView):
     serializer_class = UserProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -75,9 +74,9 @@ class UserProfileUpdateView(generics.RetrieveUpdateAPIView):
         return self.request.user
 
 
-# ---------------------------------
-# Forgot Password (Email Link)
-# ---------------------------------
+# ---------------------------------------------------------
+# Password Reset (Request Email)
+# ---------------------------------------------------------
 class PasswordResetRequestView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -93,23 +92,22 @@ class PasswordResetRequestView(APIView):
 
         uid = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)
-
         reset_url = f"{settings.FRONTEND_URL}/reset-password/{uid}/{token}/"
 
         send_mail(
-            subject="CivicTrack Password Reset Request",
+            subject="Reset Your CivicTrack Password",
             message=f"Click the link to reset your password:\n{reset_url}",
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[email],
             fail_silently=False,
         )
 
-        return Response({"detail": "✅ Password reset email sent."}, status=200)
+        return Response({"detail": "Password reset email sent."}, status=200)
 
 
-# ---------------------------------
-# Password Reset Confirm
-# ---------------------------------
+# ---------------------------------------------------------
+# Password Reset (Confirm)
+# ---------------------------------------------------------
 class PasswordResetConfirmView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -130,4 +128,4 @@ class PasswordResetConfirmView(APIView):
         user.set_password(new_password)
         user.save()
 
-        return Response({"detail": "✅ Password has been reset successfully."}, status=200)
+        return Response({"detail": "Password reset successful."}, status=200)

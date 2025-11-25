@@ -1,26 +1,29 @@
 from django.urls import path, include
-from django.shortcuts import render   # ✅ import render
-from . import views
-from ml.predict import predict_issue_category
-from .views import IssueViewSet, FlagReportViewSet
+from django.shortcuts import render
 from rest_framework.routers import DefaultRouter
+from .views import (
+    IssueViewSet,
+    FlagReportViewSet,
+    flagged_issues_list,
+)
+from ml.predict import predict_issue_category_api
 
-app_name = 'reports'
-
+app_name = "reports"
 
 router = DefaultRouter()
-router.register(r"issues", IssueViewSet)
-router.register(r"flags", FlagReportViewSet)
-router.register(r"issues", IssueViewSet, basename="issues")  
-router.register(r"flagged", FlagReportViewSet, basename="flagged")
+router.register(r"issues", IssueViewSet, basename="issues")
+router.register(r"flags", FlagReportViewSet, basename="flags")
 
 urlpatterns = [
-    
-    
-    
-    path('admin/flags/', views.flagged_issues_list, name='flagged_issues_list'),
-    path('admin/flags/<int:flag_id>/<str:action>/', views.resolve_flag, name='resolve_flag'),
-    path('success/', lambda request: render(request, 'reports/success.html'), name='issue_success'),
+    # Moderation dashboard (staff only)
+    path("moderation/flags/", flagged_issues_list, name="flagged_issues_list"),
+
+    # Optional success page (frontend usage)
+    path("success/", lambda req: render(req, "reports/success.html"), name="issue_success"),
+
+    # API ViewSets
     path("", include(router.urls)),
-    path("predict-category/", predict_category, name="predict-category"), 
+
+    # ML Prediction API (POST)
+    path("predict-category/", predict_issue_category_api, name="predict-category"),
 ]

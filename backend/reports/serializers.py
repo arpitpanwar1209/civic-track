@@ -1,31 +1,40 @@
 from rest_framework import serializers
 from .models import Issue, IssuePhoto, FlagReport
 from math import radians, cos, sin, asin, sqrt
-  # ✅ ML integration
+from ml.predict import predict_issue_category
 
 
+# ---------------------------------------------------------
+# Extra Issue Photos (Multiple Images)
+# ---------------------------------------------------------
 class IssuePhotoSerializer(serializers.ModelSerializer):
     class Meta:
         model = IssuePhoto
         fields = ["id", "image", "uploaded_at"]
 
 
+# ---------------------------------------------------------
+# Flag Report Serializer
+# ---------------------------------------------------------
 class FlagReportSerializer(serializers.ModelSerializer):
-    reported_by = serializers.StringRelatedField()
+    reported_by = serializers.StringRelatedField(read_only=True)
 
     class Meta:
         model = FlagReport
         fields = ["id", "reason", "comment", "reported_by", "created_at", "reviewed"]
+        read_only_fields = ["created_at", "reviewed"]
 
 
+# ---------------------------------------------------------
+# Issue Serializer (Main)
+# ---------------------------------------------------------
 class IssueSerializer(serializers.ModelSerializer):
-    # ✅ Extra fields
     likes_count = serializers.IntegerField(source="likes.count", read_only=True)
     reporter_name = serializers.SerializerMethodField()
     photos = IssuePhotoSerializer(many=True, read_only=True)
     assigned_to_name = serializers.CharField(source="assigned_to.username", read_only=True)
-    distance_km = serializers.SerializerMethodField()  # ✅ New field
-    predicted_category = serializers.SerializerMethodField(read_only=True)  # ✅ AI output
+    distance_km = serializers.SerializerMethodField()
+    predicted_category = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Issue
@@ -36,21 +45,30 @@ class IssueSerializer(serializers.ModelSerializer):
             "assigned_to", "assigned_to_name",
             "reported_by", "reporter_name",
             "created_at", "updated_at",
-            "is_anonymous", "feedback", "is_flagged", "flag_reason",
-            "likes", "likes_count", "photos",
+            "is_anonymous", "feedback",
+            "is_flagged", "flag_reason",
+            "likes", "likes_count",
+            "photos",
             "distance_km",
         ]
+
         read_only_fields = [
-            "reported_by", "status", "created_at", "updated_at", "predicted_category"
+            "id", "reported_by", "status",
+            "created_at", "updated_at",
+            "likes", "predicted_category"
         ]
 
-    # ✅ Compute human-readable name
+    # -----------------------------------------------------
+    # Reporter Name
+    # -----------------------------------------------------
     def get_reporter_name(self, obj):
         if obj.is_anonymous:
             return "Anonymous"
         return obj.reported_by.username if obj.reported_by else "Unknown"
 
-    # ✅ Haversine distance calculation
+    # -----------------------------------------------------
+    # Distance from ?nearby=lat,lon
+    # -----------------------------------------------------
     def get_distance_km(self, obj):
         request = self.context.get("request")
         if not request:
@@ -63,7 +81,7 @@ class IssueSerializer(serializers.ModelSerializer):
         try:
             lat, lon = map(float, nearby.split(","))
             return round(self._haversine(lat, lon, float(obj.latitude), float(obj.longitude)), 2)
-        except Exception:
+        except:
             return None
 
     def _haversine(self, lat1, lon1, lat2, lon2):
@@ -72,24 +90,28 @@ class IssueSerializer(serializers.ModelSerializer):
         dlat = lat2 - lat1
         a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
         c = 2 * asin(sqrt(a))
-        r = 6371
-        return c * r
+        return 6371 * c  # Earth radius
 
-    # ✅ ML integration for predicted category
+    # -----------------------------------------------------
+    # ML Category Prediction (non-persistent)
+    # -----------------------------------------------------
     def get_predicted_category(self, obj):
-        """Return predicted category using ML model (non-persistent)."""
         if obj.description:
             return predict_issue_category(obj.description)
         return None
 
-    # ✅ Override create() to attach user + auto-category prediction
+    # -----------------------------------------------------
+    # Override Create: Auto-Assign Reporter + Category
+    # -----------------------------------------------------
     def create(self, validated_data):
         user = self.context["request"].user
         validated_data["reported_by"] = user
 
-        # Auto-predict category if not provided
-        if not validated_data.get("category") and validated_data.get("description"):
-            predicted = predict_issue_category(validated_data["description"])
-            validated_data["category"] = predicted or "other"
+        # Auto-categorize with ML if missing
+        if not validated_data.get("category"):
+            desc = validated_data.get("description")
+            validated_data["category"] = (
+                predict_issue_category(desc) if desc else "other"
+            )
 
         return super().create(validated_data)

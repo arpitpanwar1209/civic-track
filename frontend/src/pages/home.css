@@ -1,75 +1,240 @@
-/* frontend/src/pages/Home.css */
+/* =========================================
+   1. GLOBAL & ANIMATIONS
+   ========================================= */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
 
-/* Smooth page fade-in */
 body {
-  animation: fadeIn 0.5s ease-in forwards;
-}
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  font-family: 'Poppins', sans-serif;
+  margin: 0;
+  overflow-x: hidden; /* Prevents horizontal scroll */
+  background-color: #f8f9fa;
 }
 
-/* Hero Section */
+/* Page Fade In */
+.home-wrapper {
+  animation: fadeIn 0.8s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* =========================================
+   2. HERO SECTION (The Big Header)
+   ========================================= */
 .hero-section {
-  height: 500px;
   position: relative;
-  background-image: url('https://images.unsplash.com/photo-1561489427-3275f6b35fcb?auto=format&fit=crop&w=1400&q=80');
+  /* Taller height for a modern look */
+  min-height: 85vh; 
+  width: 100%;
+  
+  /* Background Image */
+  background-image: url('https://www.tribuneindia.com/sortd-service/imaginary/v22-01/jpg/large/high?url=dGhldHJpYnVuZS1zb3J0ZC1wcm8tcHJvZC1zb3J0ZC9tZWRpYTViZDY3YWEwLWIzOTAtMTFlZi1hZWU4LWI5OWQ1NjM5ZjgzOS5qcGc=');
   background-size: cover;
   background-position: center;
-  background-attachment: fixed;
+  background-attachment: fixed; /* Parallax effect */
+  
+  /* Flexbox to center content */
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  text-align: center;
 }
 
-/* Mobile-friendly parallax fallback */
+/* The dark tint over the image */
+.hero-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.5) 100%);
+  z-index: 1; /* sits above image, below content */
+}
+
+/* The text and buttons */
+.hero-content {
+  position: relative;
+  z-index: 2; /* Sits above the overlay */
+  color: white;
+  width: 100%;
+  padding-top: 60px; /* Space for the navbar */
+}
+
+.hero-title {
+  font-weight: 700;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  margin-bottom: 1.5rem;
+}
+
+.hero-sub {
+  font-weight: 300;
+  max-width: 700px;
+  margin: 0 auto 2rem auto;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  line-height: 1.6;
+}
+
+/* Mobile fallback for parallax */
 @media (max-width: 768px) {
   .hero-section {
     background-attachment: scroll;
+    min-height: 70vh;
+  }
+  .hero-title {
+    font-size: 2.5rem; /* Smaller text on mobile */
   }
 }
 
-/* Dark overlay */
-.hero-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+/* =========================================
+   3. NAVIGATION (Inside Hero)
+   ========================================= */
+.brand-link {
+  font-weight: 700;
+  font-size: 1.5rem;
+  letter-spacing: -0.5px;
+  transition: opacity 0.3s;
 }
 
-/* Text layered above overlay */
-.hero-content {
-  position: relative;
-  z-index: 2;
-  color: #fff;
+.brand-link:hover {
+  opacity: 0.8;
+  color: #ffc107 !important; /* Yellow highlight on hover */
 }
 
-/* Pulsing CTA Button */
+.menu-icon {
+  font-size: 1.8rem;
+  cursor: pointer;
+}
+
+/* =========================================
+   4. BUTTONS & PULSE EFFECT
+   ========================================= */
+.cta-btn {
+  border-radius: 50px; /* Pill shape */
+  padding: 12px 30px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-width: 2px;
+}
+
+/* Pulse Animation for the Primary Button */
 .pulse-button {
-  animation: pulse 1.8s infinite ease-out;
+  background-color: #ffc107; /* Bootstrap Warning Yellow */
+  border-color: #ffc107;
+  color: #000;
+  box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+  animation: pulse 2s infinite;
+}
+
+.pulse-button:hover {
+  background-color: #e0a800;
+  border-color: #e0a800;
+  color: #000;
 }
 
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); }
-  70% { box-shadow: 0 0 0 18px rgba(255, 193, 7, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 15px rgba(255, 193, 7, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+  }
 }
 
-/* Card hover effect */
-.issue-card, .contact-card {
-  transition: transform 0.35s ease, box-shadow 0.35s ease;
-  border-radius: 12px;
+/* =========================================
+   5. ISSUE CARDS (Modern Hover Effects)
+   ========================================= */
+.section-title {
+  font-weight: 700;
+  color: #343a40;
+  position: relative;
+  display: inline-block;
 }
 
-.issue-card:hover, .contact-card:hover {
-  transform: translateY(-12px);
-  box-shadow: 0px 20px 40px rgba(0, 0, 0, 0.15) !important;
+/* Underline effect for titles */
+.section-title::after {
+  content: '';
+  display: block;
+  width: 50px;
+  height: 4px;
+  background: #0d6efd;
+  margin: 8px auto 0;
+  border-radius: 2px;
 }
 
-/* Image uniform crop */
+.issue-card {
+  border: none;
+  border-radius: 15px;
+  overflow: hidden;
+  background: #fff;
+  transition: all 0.3s ease;
+}
+
+/* The Hover Lift */
+.issue-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important;
+}
+
 .issue-card-img {
-  height: 200px;
+  height: 220px;
   object-fit: cover;
-  border-top-left-radius: 12px;
-  border-top-right-radius: 12px;
+  transition: transform 0.5s ease;
+}
+
+/* Image zoom on hover */
+.issue-card:hover .issue-card-img {
+  transform: scale(1.05);
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+.badge {
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+/* =========================================
+   6. FOOTER
+   ========================================= */
+.footer-section {
+  margin-top: 4rem;
+  padding: 4rem 0 2rem 0;
+  background-color: #1a1a1a !important; /* Darker than std bg-dark */
+}
+
+.footer-section h5 {
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 1.5rem;
+}
+
+.footer-link {
+  color: #adb5bd; /* Light gray */
+  text-decoration: none;
+  display: block;
+  margin-bottom: 0.8rem;
+  transition: color 0.2s, transform 0.2s;
+}
+
+.footer-link:hover {
+  color: #ffc107; /* Yellow highlight */
+  transform: translateX(5px); /* Slight nudge right */
+}
+
+.copyright {
+  border-top: 1px solid #333;
+  padding-top: 2rem;
+  margin-top: 2rem;
+  font-size: 0.85rem;
 }

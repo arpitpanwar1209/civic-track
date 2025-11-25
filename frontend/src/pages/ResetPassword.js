@@ -13,7 +13,11 @@ export default function ResetPassword() {
   const navigate = useNavigate();
 
   const submit = async () => {
-    if (!password.trim()) return setMsg("⚠️ Please enter a new password.");
+    if (!password.trim())
+      return setMsg("⚠️ Please enter a new password.");
+
+    if (password.length < 6)
+      return setMsg("⚠️ Password must be at least 6 characters long.");
 
     setLoading(true);
     setMsg("");
@@ -28,7 +32,7 @@ export default function ResetPassword() {
         }
       );
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (res.ok) {
         setMsg("✅ Password reset successfully!");
@@ -36,7 +40,8 @@ export default function ResetPassword() {
       } else {
         setMsg(data.detail || "⚠️ Invalid or expired reset link.");
       }
-    } catch {
+    } catch (err) {
+      console.error(err);
       setMsg("⚠️ Server error. Try again.");
     } finally {
       setLoading(false);
@@ -51,7 +56,11 @@ export default function ResetPassword() {
         <Card.Body>
           <h3 className="fw-bold mb-3 text-center">🔐 Reset Password</h3>
 
-          {msg && <Alert variant={msg.includes("✅") ? "success" : "danger"}>{msg}</Alert>}
+          {msg && (
+            <Alert variant={msg.includes("✅") ? "success" : "danger"}>
+              {msg}
+            </Alert>
+          )}
 
           <Form>
             <Form.Group className="mb-3">
@@ -61,12 +70,17 @@ export default function ResetPassword() {
                 placeholder="Enter your new password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required
                 autoComplete="new-password"
+                required
               />
             </Form.Group>
 
-            <Button className="w-100" variant="primary" onClick={submit} disabled={loading}>
+            <Button
+              className="w-100"
+              variant="primary"
+              onClick={submit}
+              disabled={loading}
+            >
               {loading ? (
                 <>
                   <Spinner as="span" animation="border" size="sm" className="me-2" />

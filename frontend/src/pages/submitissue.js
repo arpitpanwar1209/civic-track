@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Form, Button, Alert, Spinner } from "react-bootstrap";
 
-export default function SubmitIssue({ onSubmitted } = {}) {
+export default function SubmitIssue({ onSubmitted }) {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -21,13 +21,15 @@ export default function SubmitIssue({ onSubmitted } = {}) {
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
+
     if (name === "photo") {
-      setFormData({ ...formData, photo: files[0] });
+      setFormData((prev) => ({ ...prev, photo: files[0] }));
     } else {
-      setFormData({ ...formData, [name]: value });
+      setFormData((prev) => ({ ...prev, [name]: value }));
     }
 
-    if (name === "description" && value.length > 10) {
+    // Trigger ML category prediction
+    if (name === "description" && value.trim().length > 10) {
       predictCategory(value);
     }
   };
@@ -35,18 +37,24 @@ export default function SubmitIssue({ onSubmitted } = {}) {
   const predictCategory = async (description) => {
     try {
       setLoadingPrediction(true);
+
       const res = await fetch(`${API_URL}/api/predict-category/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ description }),
       });
+
       const data = await res.json();
+
       if (res.ok && data.predicted_category) {
         setPredictedCategory(data.predicted_category);
-        setFormData((prev) => ({ ...prev, category: data.predicted_category }));
+        setFormData((prev) => ({
+          ...prev,
+          category: data.predicted_category,
+        }));
       } else {
         setPredictedCategory(null);
       }
@@ -62,35 +70,50 @@ export default function SubmitIssue({ onSubmitted } = {}) {
     setError(null);
     setSuccess(null);
 
+    if (!token) {
+      setError("⚠️ You must be logged in to submit an issue.");
+      return;
+    }
+
     const submitData = new FormData();
     Object.entries(formData).forEach(([key, value]) => {
-      submitData.append(key, value);
+      if (value !== null) submitData.append(key, value);
     });
 
     try {
       const res = await fetch(`${API_URL}/api/issues/`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
         body: submitData,
       });
 
-      if (res.ok) {
-        const issue = await res.json().catch(() => null);
-        setSuccess("✅ Issue submitted successfully!");
-        setFormData({
-          title: "",
-          description: "",
-          category: "",
-          location: "",
-          photo: null,
-          priority: "medium",
-        });
-        setPredictedCategory(null);
-        if (onSubmitted && typeof onSubmitted === "function") onSubmitted(issue);
-      } else {
-        setError("⚠️ Failed to submit issue.");
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        setError(data?.detail || "⚠️ Failed to submit issue.");
+        return;
       }
-    } catch {
+
+      setSuccess("✅ Issue submitted successfully!");
+
+      // Reset form
+      setFormData({
+        title: "",
+        description: "",
+        category: "",
+        location: "",
+        photo: null,
+        priority: "medium",
+      });
+      setPredictedCategory(null);
+
+      if (onSubmitted && typeof onSubmitted === "function") {
+        onSubmitted(data);
+      }
+    } catch (err) {
+      console.error(err);
       setError("⚠️ Network error while submitting issue.");
     }
   };
@@ -102,19 +125,36 @@ export default function SubmitIssue({ onSubmitted } = {}) {
 
       <Form.Group className="mb-3">
         <Form.Label>Title</Form.Label>
-        <Form.Control type="text" name="title" value={formData.title} onChange={handleChange} placeholder="Enter a short title" required />
+        <Form.Control
+          type="text"
+          name="title"
+          value={formData.title}
+          onChange={handleChange}
+          placeholder="Enter a short title"
+          required
+        />
       </Form.Group>
 
       <Form.Group className="mb-3">
         <Form.Label>Description</Form.Label>
-        <Form.Control as="textarea" rows={4} name="description" value={formData.description} onChange={handleChange} placeholder="Describe the issue in detail" required />
+        <Form.Control
+          as="textarea"
+          rows={4}
+          name="description"
+          value={formData.description}
+          onChange={handleChange}
+          placeholder="Describe the issue"
+          required
+        />
+
         {loadingPrediction && (
           <div className="mt-2 text-muted small">
-            <Spinner animation="border" size="sm" /> Analyzing description...
+            <Spinner animation="border" size="sm" /> Detecting category…
           </div>
         )}
+
         {predictedCategory && (
-          <Alert variant="info" className="mt-2">
+          <Alert variant="info" className="mt-2 py-2">
             🤖 Suggested Category: <strong>{predictedCategory}</strong>
           </Alert>
         )}
@@ -122,7 +162,12 @@ export default function SubmitIssue({ onSubmitted } = {}) {
 
       <Form.Group className="mb-3">
         <Form.Label>Category</Form.Label>
-        <Form.Select name="category" value={formData.category} onChange={handleChange} required>
+        <Form.Select
+          name="category"
+          value={formData.category}
+          onChange={handleChange}
+          required
+        >
           <option value="">Select Category</option>
           <option value="road">Road</option>
           <option value="garbage">Garbage</option>
@@ -138,17 +183,32 @@ export default function SubmitIssue({ onSubmitted } = {}) {
 
       <Form.Group className="mb-3">
         <Form.Label>Location</Form.Label>
-        <Form.Control type="text" name="location" value={formData.location} onChange={handleChange} placeholder="Enter location (optional)" />
+        <Form.Control
+          type="text"
+          name="location"
+          value={formData.location}
+          onChange={handleChange}
+          placeholder="Enter location (optional)"
+        />
       </Form.Group>
 
       <Form.Group className="mb-3">
         <Form.Label>Photo</Form.Label>
-        <Form.Control type="file" name="photo" onChange={handleChange} />
+        <Form.Control
+          type="file"
+          accept="image/*"
+          name="photo"
+          onChange={handleChange}
+        />
       </Form.Group>
 
       <Form.Group className="mb-3">
         <Form.Label>Priority</Form.Label>
-        <Form.Select name="priority" value={formData.priority} onChange={handleChange}>
+        <Form.Select
+          name="priority"
+          value={formData.priority}
+          onChange={handleChange}
+        >
           <option value="low">Low</option>
           <option value="medium">Medium</option>
           <option value="high">High</option>

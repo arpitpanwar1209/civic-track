@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import BackButton from "../components/BackButton";
 import {
   Container,
   Row,
@@ -15,7 +14,7 @@ import {
 
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
-function Login() {
+export default function Login() {
   const [formData, setFormData] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -24,12 +23,16 @@ function Login() {
   const [showModal, setShowModal] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetMsg, setResetMsg] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
 
   const navigate = useNavigate();
 
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
+  // -------------------------------
+  // LOGIN FUNCTION
+  // -------------------------------
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -37,6 +40,7 @@ function Login() {
     setSubmitting(true);
 
     try {
+      // 1️⃣ Login (JWT)
       const res = await fetch(`${API_URL}/api/token/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -46,41 +50,51 @@ function Login() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.detail || "Invalid login credentials.");
+        setError(data.detail || "Invalid username or password.");
         setSubmitting(false);
         return;
       }
 
+      // Store tokens
       localStorage.setItem("access", data.access);
       localStorage.setItem("refresh", data.refresh);
 
-      const profileRes = await fetch(`${API_URL}/api/accounts/me/`, {
+      // 2️⃣ Fetch profile
+      const profileRes = await fetch(`${API_URL}/api/profile/`, {
         headers: { Authorization: `Bearer ${data.access}` },
       });
 
       const profile = await profileRes.json();
 
-      if (profileRes.ok) {
-        localStorage.setItem("username", profile.username);
-        localStorage.setItem("role", profile.role);
-        localStorage.setItem("profession", profile.profession || "");
-
-        setSuccess("✅ Login successful! Redirecting...");
-        setTimeout(() => navigate("/dashboard"), 1200);
-      } else {
-        setError("Failed to load profile. Try again.");
+      if (!profileRes.ok) {
+        setError("Failed to load user profile. Please try again.");
+        setSubmitting(false);
+        return;
       }
+
+      // Save profile to localStorage
+      localStorage.setItem("username", profile.username);
+      localStorage.setItem("role", profile.role);
+      localStorage.setItem("profession", profile.profession || "");
+
+      setSuccess("Login successful! Redirecting...");
+
+      setTimeout(() => navigate("/dashboard"), 1200);
     } catch (err) {
       console.error("Login error:", err);
-      setError("Server connection issue. Try again.");
+      setError("Unable to connect. Please try again later.");
     } finally {
       setSubmitting(false);
     }
   };
 
+  // -------------------------------
+  // PASSWORD RESET FUNCTION
+  // -------------------------------
   const handlePasswordReset = async (e) => {
     e.preventDefault();
     setResetMsg("");
+    setResetLoading(true);
 
     try {
       const res = await fetch(`${API_URL}/api/accounts/password-reset/`, {
@@ -99,6 +113,8 @@ function Login() {
     } catch (err) {
       console.error(err);
       setResetMsg("⚠️ Server error. Please try again.");
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -116,6 +132,7 @@ function Login() {
               {success && <Alert variant="success">{success}</Alert>}
               {error && <Alert variant="danger">{error}</Alert>}
 
+              {/* LOGIN FORM */}
               <Form onSubmit={handleSubmit}>
                 <Form.Group className="mb-3">
                   <Form.Label>Username</Form.Label>
@@ -124,9 +141,7 @@ function Login() {
                     name="username"
                     value={formData.username}
                     onChange={handleChange}
-                    placeholder="Enter username"
                     required
-                    autoComplete="username"
                   />
                 </Form.Group>
 
@@ -137,26 +152,33 @@ function Login() {
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
-                    placeholder="Enter password"
                     required
-                    autoComplete="current-password"
                   />
                 </Form.Group>
 
-                <div className="d-grid">
-                  <Button type="submit" variant="primary" disabled={submitting}>
-                    {submitting ? (
-                      <>
-                        <Spinner as="span" animation="border" size="sm" className="me-2" />
-                        Logging In...
-                      </>
-                    ) : (
-                      "Log In"
-                    )}
-                  </Button>
-                </div>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  className="w-100"
+                  disabled={submitting}
+                >
+                  {submitting ? (
+                    <>
+                      <Spinner
+                        as="span"
+                        animation="border"
+                        size="sm"
+                        className="me-2"
+                      />
+                      Logging In...
+                    </>
+                  ) : (
+                    "Log In"
+                  )}
+                </Button>
               </Form>
 
+              {/* Reset Password Link */}
               <div className="text-center mt-3">
                 <small>
                   Forgot your password?{" "}
@@ -180,9 +202,10 @@ function Login() {
         </Col>
       </Row>
 
+      {/* PASSWORD RESET MODAL */}
       <Modal show={showModal} onHide={() => setShowModal(false)} centered>
         <Modal.Header closeButton>
-          <Modal.Title>Reset Password</Modal.Title>
+          <Modal.Title>Password Reset</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form onSubmit={handlePasswordReset}>
@@ -192,19 +215,25 @@ function Login() {
                 type="email"
                 value={resetEmail}
                 onChange={(e) => setResetEmail(e.target.value)}
-                placeholder="Enter your registered email"
                 required
-                autoComplete="email"
               />
             </Form.Group>
 
-            <Button type="submit" variant="primary" className="w-100 mt-3">
-              Send Reset Link
+            <Button
+              type="submit"
+              variant="primary"
+              className="w-100 mt-3"
+              disabled={resetLoading}
+            >
+              {resetLoading ? "Sending..." : "Send Reset Link"}
             </Button>
           </Form>
 
           {resetMsg && (
-            <Alert className="mt-3" variant={resetMsg.includes("✅") ? "success" : "danger"}>
+            <Alert
+              className="mt-3"
+              variant={resetMsg.includes("✅") ? "success" : "danger"}
+            >
               {resetMsg}
             </Alert>
           )}
@@ -213,5 +242,3 @@ function Login() {
     </Container>
   );
 }
-
-export default Login;

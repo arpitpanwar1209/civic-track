@@ -1,37 +1,51 @@
 // frontend/src/components/IssueMap.js
 import React from "react";
 import { Marker, Popup } from "react-leaflet";
+import SafeMap from "./safemap";
 import { Link } from "react-router-dom";
 import L from "leaflet";
-import SafeMap from "./safemap";
 
-// Fix default marker icon
+// Fix Leaflet marker icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
   iconUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
   shadowUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
 });
 
-// Validate coordinates
+// Validate lat/lon
 const isValidCoord = (lat, lon) =>
   typeof lat === "number" &&
   typeof lon === "number" &&
   Number.isFinite(lat) &&
-  Number.isFinite(lon) &&
   lat >= -90 &&
   lat <= 90 &&
   lon >= -180 &&
   lon <= 180;
 
-export default function IssueMap({ issues = [], handleLike, handleDelete }) {
-  // Pick first valid issue for centering, else fallback handled in SafeMap
+export default function IssueMap({
+  issues = [],
+  API_URL,
+  role,
+  onLike,
+  onDelete,
+  onClaim,
+  onResolve,
+}) {
+  // Default center: first valid issue
   const firstValid = issues.find((i) => isValidCoord(i.latitude, i.longitude));
   const centerLat = firstValid?.latitude ?? null;
   const centerLon = firstValid?.longitude ?? null;
+
+  // Helper for proper image URL
+  const getImageUrl = (path) => {
+    if (!path) return null;
+    if (path.startsWith("http")) return path;
+    return `${API_URL}${path}`;
+  };
 
   return (
     <SafeMap
@@ -42,133 +56,104 @@ export default function IssueMap({ issues = [], handleLike, handleDelete }) {
     >
       {issues.map((issue) =>
         isValidCoord(issue.latitude, issue.longitude) ? (
-          <Marker
-            key={issue.id}
-            position={[issue.latitude, issue.longitude]}
-          >
+          <Marker key={issue.id} position={[issue.latitude, issue.longitude]}>
             <Popup minWidth={260}>
-              <div
-                style={{
-                  fontSize: "0.95em",
-                  lineHeight: "1.4",
-                  maxWidth: "250px",
-                }}
-              >
-                <h3
-                  style={{
-                    margin: "0 0 8px",
-                    fontSize: "1.1em",
-                    fontWeight: "600",
-                  }}
-                >
-                  {issue.title}
-                </h3>
+              <div className="issue-popup">
+                <h5 className="fw-bold">{issue.title}</h5>
 
-                <p style={{ margin: "4px 0" }}>{issue.description}</p>
+                <p className="mb-1">{issue.description}</p>
 
-                <p style={{ margin: "4px 0", fontSize: "0.9em" }}>
+                <p className="text-muted small mb-1">
                   <strong>Category:</strong> {issue.category} <br />
                   <strong>Priority:</strong> {issue.priority} <br />
                   <strong>Status:</strong> {issue.status}
                 </p>
 
-                {/* Photo preview with fallback */}
-                <div style={{ margin: "8px 0" }}>
+                {/* Photo */}
+                <div className="my-2">
                   {issue.photo ? (
                     <img
-                      src={
-                        issue.photo.startsWith("http")
-                          ? issue.photo
-                          : `http://127.0.0.1:8000${issue.photo}`
-                      }
+                      src={getImageUrl(issue.photo)}
                       alt="Issue"
+                      className="rounded w-100"
                       style={{
-                        width: "100%",
-                        maxHeight: "120px",
+                        maxHeight: "130px",
                         objectFit: "cover",
-                        borderRadius: "6px",
                       }}
                     />
                   ) : (
-                    <div
-                      style={{
-                        width: "100%",
-                        height: "80px",
-                        borderRadius: "6px",
-                        background: "#f2f2f2",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "0.85em",
-                        color: "#666",
-                      }}
-                    >
-                      No Image
-                    </div>
+                    <div className="no-photo">No Image</div>
                   )}
                 </div>
 
                 {/* Likes */}
-                <p style={{ fontSize: "0.85em", margin: "5px 0" }}>
-                  👍 {issue.likes_count || 0} likes
+                <p className="small text-muted">
+                  👍 {issue.likes_count} likes
                 </p>
 
-                {/* Action buttons */}
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "6px",
-                    flexWrap: "wrap",
-                    marginTop: "6px",
-                  }}
-                >
-                  {handleLike && (
+                {/* Buttons */}
+                <div className="popup-buttons">
+                  {/* Consumer Like */}
+                  {role === "consumer" && (
                     <button
-                      onClick={() => handleLike(issue.id)}
-                      style={{
-                        padding: "5px 10px",
-                        borderRadius: "5px",
-                        border: "none",
-                        background: "#2ecc71",
-                        color: "white",
-                        cursor: "pointer",
-                        fontSize: "0.85em",
-                      }}
+                      className="btn btn-success btn-sm"
+                      onClick={() => onLike(issue.id)}
                     >
                       👍 Like
                     </button>
                   )}
 
-                  <Link
-                    to={`/edit-issue/${issue.id}`}
-                    style={{
-                      padding: "5px 10px",
-                      borderRadius: "5px",
-                      background: "#f39c12",
-                      color: "white",
-                      textDecoration: "none",
-                      fontSize: "0.85em",
-                    }}
-                  >
-                    ✏️ Edit
-                  </Link>
+                  {/* Consumer Edit */}
+                  {role === "consumer" && (
+                    <Link
+                      to={`/issues/${issue.id}/edit`}
+                      className="btn btn-warning btn-sm"
+                    >
+                      ✏ Edit
+                    </Link>
+                  )}
 
-                  {handleDelete && (
+                  {/* Consumer Delete */}
+                  {role === "consumer" && (
                     <button
-                      onClick={() => handleDelete(issue.id)}
-                      style={{
-                        padding: "5px 10px",
-                        borderRadius: "5px",
-                        border: "none",
-                        background: "#e74c3c",
-                        color: "white",
-                        cursor: "pointer",
-                        fontSize: "0.85em",
-                      }}
+                      className="btn btn-danger btn-sm"
+                      onClick={() => onDelete(issue.id)}
                     >
                       🗑 Delete
                     </button>
                   )}
+
+                  {/* Provider Claim */}
+                  {role === "provider" && !issue.assigned_to_name && (
+                    <button
+                      className="btn btn-primary btn-sm"
+                      onClick={() => onClaim(issue.id)}
+                    >
+                      🔧 Claim
+                    </button>
+                  )}
+
+                  {/* Provider Resolve */}
+                  {role === "provider" &&
+                    issue.assigned_to_name === localStorage.getItem("username") &&
+                    issue.status === "in_progress" && (
+                      <button
+                        className="btn btn-success btn-sm"
+                        onClick={() => onResolve(issue.id)}
+                      >
+                        ✔ Resolve
+                      </button>
+                    )}
+
+                  {/* Already claimed by someone else */}
+                  {role === "provider" &&
+                    issue.assigned_to_name &&
+                    issue.assigned_to_name !==
+                      localStorage.getItem("username") && (
+                      <span className="badge bg-secondary">
+                        Claimed by {issue.assigned_to_name}
+                      </span>
+                    )}
                 </div>
               </div>
             </Popup>

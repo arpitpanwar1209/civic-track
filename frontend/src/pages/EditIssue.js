@@ -1,342 +1,192 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Container, Row, Col, Card, Button, Spinner, Alert, Badge } from "react-bootstrap";
-import { FaThumbsUp, FaEdit, FaTrash, FaUser, FaCheck, FaHandshake, FaMapMarkerAlt } from "react-icons/fa";
-import IssueMap from "../components/issuemap";
-import SubmitIssue from "./submitissue";
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import BackButton from "../components/BackButton";
+import { Container, Card, Form, Button, Alert, Spinner, Image } from "react-bootstrap";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
-export default function Dashboard() {
+export default function EditIssue() {
+  const { id } = useParams();
   const navigate = useNavigate();
 
-  const [issues, setIssues] = useState([]);
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    category: "",
+    priority: "",
+    location: "",
+    status: "",
+    photo: null,
+  });
+
   const [loading, setLoading] = useState(true);
-  const [profileLoading, setProfileLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState({ type: "", text: "" });
+  const [preview, setPreview] = useState(null);
 
-  const [role, setRole] = useState(localStorage.getItem("role") || "consumer");
-  const [profession, setProfession] = useState(localStorage.getItem("profession") || "");
-  const username = localStorage.getItem("username") || "";
+  const token = localStorage.getItem("access");
 
-  const access = localStorage.getItem("access");
-  const refresh = localStorage.getItem("refresh");
-
-  const authHeader = useMemo(
-    () => (access ? { Authorization: `Bearer ${access}` } : {}),
-    [access]
-  );
-
-  const refreshAccessToken = async () => {
-    if (!refresh) {
-      localStorage.clear();
-      navigate("/login");
-      return null;
-    }
-    try {
-      const res = await fetch(`${API_URL}/api/token/refresh/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh }),
-      });
-      if (!res.ok) throw new Error("refresh failed");
-      const data = await res.json();
-      localStorage.setItem("access", data.access);
-      return data.access;
-    } catch {
-      localStorage.clear();
-      navigate("/login");
-      return null;
+  const handleInput = (e) => {
+    const { name, value, files } = e.target;
+    if (name === "photo") {
+      const file = files[0];
+      setFormData({ ...formData, photo: file });
+      setPreview(URL.createObjectURL(file));
+    } else {
+      setFormData({ ...formData, [name]: value });
     }
   };
 
-  const authedFetch = async (url, opts = {}) => {
-    const doFetch = async (token) =>
-      fetch(url, {
-        ...opts,
-        headers: {
-          ...(opts.headers || {}),
-          ...(token ? { Authorization: `Bearer ${token}` } : authHeader),
-        },
-      });
-
-    let res = await doFetch();
-    if (res.status === 401) {
-      const newToken = await refreshAccessToken();
-      if (!newToken) return res;
-      res = await doFetch(newToken);
-    }
-    return res;
-  };
-
-  const loadProfile = async () => {
-    try {
-      const res = await authedFetch(`${API_URL}/api/profile/`, { method: "GET" });
-      if (!res.ok) throw new Error(`profile ${res.status}`);
-      const data = await res.json();
-
-      if (data.role) {
-        localStorage.setItem("role", data.role);
-        setRole(data.role);
-      }
-      if (data.profession) {
-        localStorage.setItem("profession", data.profession);
-        setProfession(data.profession);
-      }
-    } catch (e) {
-      console.error("Profile load error:", e);
-      setError((prev) => prev || "Failed to fetch profile.");
-    } finally {
-      setProfileLoading(false);
-    }
-  };
-
-  const loadIssues = async () => {
-    setLoading(true);
-    try {
-      const res = await authedFetch(`${API_URL}/api/issues/`, { method: "GET" });
-      if (!res.ok) throw new Error(`issues ${res.status}`);
-      const data = await res.json();
-      setIssues(Array.isArray(data) ? data : data.results || []);
-    } catch (e) {
-      console.error("Issues fetch error:", e);
-      setError("Failed to load issues.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLike = async (id) => {
-    try {
-      const res = await authedFetch(`${API_URL}/api/issues/${id}/like/`, { method: "POST" });
-      if (!res.ok) return;
-      const upd = await res.json();
-      setIssues((prev) => prev.map((i) => (i.id === id ? { ...i, likes_count: upd.likes_count } : i)));
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this issue?")) return;
-    try {
-      const res = await authedFetch(`${API_URL}/api/issues/${id}/`, { method: "DELETE" });
-      if (res.ok) setIssues((prev) => prev.filter((i) => i.id !== id));
-    } catch (e) {
-      console.error(e);
-      alert("Failed to delete issue.");
-    }
-  };
-
-  const handleClaim = async (id) => {
-    try {
-      const res = await authedFetch(`${API_URL}/api/issues/${id}/claim/`, { method: "POST" });
-      if (res.ok) await loadIssues();
-      else alert("Unable to claim this issue.");
-    } catch (e) {
-      console.error(e);
-      alert("Error claiming issue.");
-    }
-  };
-
-  const handleMarkResolved = async (id) => {
-    try {
-      const res = await authedFetch(`${API_URL}/api/issues/${id}/`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "resolved" }),
-      });
-      if (res.ok) await loadIssues();
-      else alert("Unable to mark resolved.");
-    } catch (e) {
-      console.error(e);
-      alert("Error updating status.");
-    }
-  };
-
-  const handleIssueSubmitted = (newIssue) => {
-    setIssues((prev) => [newIssue, ...prev]);
-  };
-
+  // Fetch issue details
   useEffect(() => {
-    if (!access || !refresh) {
-      navigate("/login");
-      return;
-    }
-    (async () => {
-      await loadProfile();
-      await loadIssues();
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    async function loadIssue() {
+      try {
+        const res = await fetch(`${API_URL}/api/issues/${id}/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-  const titleForList = role === "provider" ? "🛠️ Issues Needing Your Attention" : "📌 My Issues";
+        if (!res.ok) throw new Error("Failed to load issue");
+
+        const data = await res.json();
+
+        setFormData({
+          title: data.title,
+          description: data.description,
+          category: data.category,
+          priority: data.priority,
+          location: data.location,
+          status: data.status,
+          photo: null,
+        });
+
+        if (data.photo) {
+          const fullUrl = data.photo.startsWith("http")
+            ? data.photo
+            : `${API_URL}${data.photo}`;
+          setPreview(fullUrl);
+        }
+      } catch (e) {
+        console.error(e);
+        setMsg({ type: "danger", text: "⚠️ Unable to load issue." });
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadIssue();
+  }, [id, token]); // API_URL removed (constant)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+
+    const form = new FormData();
+    Object.entries(formData).forEach(([key, val]) => {
+      if (key === "photo" && val === null) return;
+      form.append(key, val);
+    });
+
+    try {
+      const res = await fetch(`${API_URL}/api/issues/${id}/`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+
+      if (!res.ok) throw new Error("Save failed");
+
+      setMsg({ type: "success", text: "✅ Issue updated successfully!" });
+      setTimeout(() => navigate("/dashboard"), 1200);
+    } catch (e) {
+      setMsg({ type: "danger", text: "⚠️ Failed to update issue." });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
-    <Container className="py-4">
+    <Container className="py-4" style={{ maxWidth: 700 }}>
       <BackButton />
+      <Card className="shadow-sm">
+        <Card.Body>
+          <h3 className="fw-bold mb-3">✏️ Edit Issue</h3>
 
-      <Row className="justify-content-between align-items-center mb-4">
-        <Col>
-          <h1 className="h2 fw-bold d-flex align-items-center gap-2">
-            📋 Dashboard
-            {role === "provider" && (
-              <Badge bg="info" pill title={profession || "Provider"}>
-                {profession || "provider"}
-              </Badge>
-            )}
-          </h1>
-        </Col>
-        <Col xs="auto">
-          <Button as={Link} to="/profile" variant="primary">
-            <FaUser className="me-2" /> Profile
-          </Button>
-        </Col>
-      </Row>
+          {msg.text && <Alert variant={msg.type}>{msg.text}</Alert>}
 
-      {error && <Alert variant="danger">{error}</Alert>}
+          {loading ? (
+            <div className="text-center py-5">
+              <Spinner animation="border" />
+            </div>
+          ) : (
+            <Form onSubmit={handleSubmit}>
+              <Form.Group className="mb-3">
+                <Form.Label>Title</Form.Label>
+                <Form.Control name="title" value={formData.title} onChange={handleInput} required />
+              </Form.Group>
 
-      {role === "consumer" && (
-        <Card className="mb-4 shadow-sm">
-          <Card.Body className="p-4">
-            <h3 className="h5 mb-3">➕ Submit a New Issue</h3>
-            <SubmitIssue onSubmitted={handleIssueSubmitted} />
-          </Card.Body>
-        </Card>
-      )}
+              <Form.Group className="mb-3">
+                <Form.Label>Description</Form.Label>
+                <Form.Control as="textarea" rows={4} name="description" value={formData.description} onChange={handleInput} required />
+              </Form.Group>
 
-      <h2 className="h4 mt-4 mb-3">{titleForList}</h2>
+              <Form.Group className="mb-3">
+                <Form.Label>Category</Form.Label>
+                <Form.Select name="category" value={formData.category} onChange={handleInput} required>
+                  <option value="">Select category</option>
+                  <option value="road">Road</option>
+                  <option value="garbage">Garbage</option>
+                  <option value="water">Water Supply</option>
+                  <option value="electricity">Electricity</option>
+                  <option value="sewage">Sewage</option>
+                  <option value="lighting">Street Lighting</option>
+                  <option value="pollution">Pollution</option>
+                  <option value="traffic">Traffic</option>
+                  <option value="other">Other</option>
+                </Form.Select>
+              </Form.Group>
 
-      {loading || profileLoading ? (
-        <div className="text-center py-4">
-          <Spinner animation="border" role="status" />
-          <p className="mt-2">Loading your feed…</p>
-        </div>
-      ) : issues.length === 0 ? (
-        <Alert variant="info">
-          {role === "provider"
-            ? "No issues match your profession right now."
-            : "No issues submitted yet. Be the first to report one!"}
-        </Alert>
-      ) : (
-        <Row>
-          {issues.map((issue) => {
-            const youAssigned =
-              issue.assigned_to &&
-              (issue.assigned_to.username === username || issue.assigned_to === username);
+              <Form.Group className="mb-3">
+                <Form.Label>Priority</Form.Label>
+                <Form.Select name="priority" value={formData.priority} onChange={handleInput}>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </Form.Select>
+              </Form.Group>
 
-            return (
-              <Col md={6} lg={4} key={issue.id} className="mb-4">
-                <Card className="shadow-sm h-100">
-                  {issue.photo && (
-                    <Card.Img
-                      variant="top"
-                      src={`${API_URL}${issue.photo}`}
-                      style={{ height: 200, objectFit: "cover" }}
-                      alt={issue.title}
-                    />
-                  )}
-                  <Card.Body className="d-flex flex-column">
-                    <Card.Title className="fw-bold d-flex align-items-center gap-2">
-                      {issue.title}
-                      {youAssigned && (
-                        <Badge bg="secondary" title="Assigned to you">
-                          <FaHandshake className="me-1" />
-                          yours
-                        </Badge>
-                      )}
-                    </Card.Title>
+              <Form.Group className="mb-3">
+                <Form.Label>Location</Form.Label>
+                <Form.Control name="location" value={formData.location} onChange={handleInput} />
+              </Form.Group>
 
-                    <Card.Subtitle className="mb-2 text-muted small">
-                      <strong>Priority:</strong> {issue.priority} · <strong>Status:</strong>{" "}
-                      <Badge
-                        bg={
-                          issue.status === "resolved"
-                            ? "success"
-                            : issue.status === "in_progress"
-                            ? "warning"
-                            : "secondary"
-                        }
-                      >
-                        {issue.status}
-                      </Badge>
-                    </Card.Subtitle>
+              <Form.Group className="mb-3">
+                <Form.Label>Status</Form.Label>
+                <Form.Select name="status" value={formData.status} onChange={handleInput}>
+                  <option value="submitted">Submitted</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="resolved">Resolved</option>
+                </Form.Select>
+              </Form.Group>
 
-                    <div className="small mb-2">
-                      <div>
-                        <strong>Reported by:</strong> {issue.reporter_name || "Anonymous"}
-                      </div>
+              <Form.Group className="mb-3">
+                <Form.Label>Photo</Form.Label>
+                <Form.Control type="file" name="photo" onChange={handleInput} />
+              </Form.Group>
 
-                      {issue.location && (
-                        <div className="d-flex align-items-center gap-1">
-                          <FaMapMarkerAlt /> <span>{issue.location}</span>
-                        </div>
-                      )}
+              {preview && (
+                <div className="text-center mb-3">
+                  <Image src={preview} style={{ width: "100%", maxHeight: 250, objectFit: "cover" }} rounded />
+                </div>
+              )}
 
-                      {typeof issue.distance_km === "number" && (
-                        <div className="text-muted">~{issue.distance_km} km away</div>
-                      )}
-
-                      <div className="text-muted">
-                        ⏰ {issue.created_at ? new Date(issue.created_at).toLocaleString() : ""}
-                      </div>
-                    </div>
-
-                    <div className="mb-3">👍 {issue.likes_count || 0} likes</div>
-
-                    <div className="mt-auto">
-                      <div className="d-flex flex-wrap gap-2">
-                        <Button variant="success" size="sm" onClick={() => handleLike(issue.id)}>
-                          <FaThumbsUp className="me-1" /> Like
-                        </Button>
-
-                        {role === "consumer" && (
-                          <>
-                            <Button as={Link} to={`/issues/${issue.id}/edit`} variant="warning" size="sm">
-                              <FaEdit className="me-1" /> Edit
-                            </Button>
-                            <Button variant="danger" size="sm" onClick={() => handleDelete(issue.id)}>
-                              <FaTrash className="me-1" /> Delete
-                            </Button>
-                          </>
-                        )}
-
-                        {role === "provider" && (
-                          <>
-                            {!issue.assigned_to && issue.status !== "resolved" && (
-                              <Button className="flex-fill" variant="info" size="sm" onClick={() => handleClaim(issue.id)}>
-                                <FaHandshake className="me-1" />
-                                Claim
-                              </Button>
-                            )}
-
-                            {youAssigned && issue.status !== "resolved" && (
-                              <Button
-                                className="flex-fill"
-                                variant="success"
-                                size="sm"
-                                onClick={() => handleMarkResolved(issue.id)}
-                              >
-                                <FaCheck className="me-1" /> Mark Resolved
-                              </Button>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </Card.Body>
-                </Card>
-              </Col>
-            );
-          })}
-        </Row>
-      )}
-
-      <div className="mt-5">
-        <h2 className="h4">🗺️ View Issues on Map</h2>
-        <IssueMap issues={issues} />
-      </div>
+              <Button type="submit" className="w-100" disabled={saving}>
+                {saving ? "Saving..." : "Save Changes"}
+              </Button>
+            </Form>
+          )}
+        </Card.Body>
+      </Card>
     </Container>
   );
 }

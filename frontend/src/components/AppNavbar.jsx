@@ -5,15 +5,37 @@ import { FaMapMarkedAlt, FaPlusCircle } from "react-icons/fa";
 
 export default function AppNavbar() {
   const navigate = useNavigate();
-  const username = localStorage.getItem("username");
-  const role = localStorage.getItem("role");
-  const isLoggedIn = !!localStorage.getItem("access");
 
-  const [scrolled, setScrolled] = useState(false);
+  // read auth info once at mount — if you move to Context/Redux later replace this
+  const [auth, setAuth] = useState({
+    username: localStorage.getItem("username") || "",
+    role: localStorage.getItem("role") || "",
+    isLoggedIn: !!localStorage.getItem("access"),
+  });
 
   useEffect(() => {
+    // If some other part of the app may update localStorage, you can listen for
+    // 'storage' events (works across tabs). For single-tab, consider pushing updates
+    // through context instead.
+    const onStorage = (e) => {
+      if (e.key === "username" || e.key === "role" || e.key === "access") {
+        setAuth({
+          username: localStorage.getItem("username") || "",
+          role: localStorage.getItem("role") || "",
+          isLoggedIn: !!localStorage.getItem("access"),
+        });
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  const { username, role, isLoggedIn } = auth;
+
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
-    window.addEventListener("scroll", onScroll);
+    window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
@@ -22,8 +44,21 @@ export default function AppNavbar() {
     localStorage.removeItem("refresh");
     localStorage.removeItem("username");
     localStorage.removeItem("role");
+
+    // update state quickly so UI updates immediately
+    setAuth({ username: "", role: "", isLoggedIn: false });
+
+    // navigate to home (or login). If your app redirects unauthenticated users to /login,
+    // you can just navigate to '/' and the routing logic will handle it.
+    navigate("/", { replace: true });
     navigate("/login");
   };
+
+  const collapseId = "main-navbar";
+
+  // safe avatar url
+  const avatarSeed = encodeURIComponent(username || "CivicTrack");
+  const avatarUrl = `https://api.dicebear.com/9.x/initials/svg?seed=${avatarSeed}`;
 
   return (
     <Navbar
@@ -33,12 +68,12 @@ export default function AppNavbar() {
     >
       <Container>
         <Navbar.Brand as={Link} to="/" className="fw-bold">
-          CivicTrack <span className="brand-dot"></span>
+          CivicTrack <span className="brand-dot" />
         </Navbar.Brand>
 
-        <Navbar.Toggle />
+        <Navbar.Toggle aria-controls={collapseId} aria-label="Toggle navigation" />
 
-        <Navbar.Collapse>
+        <Navbar.Collapse id={collapseId}>
           <Nav className="me-auto">
             {isLoggedIn && (
               <Nav.Link as={Link} to="/dashboard">
@@ -68,18 +103,21 @@ export default function AppNavbar() {
                     width={28}
                     height={28}
                     alt="avatar"
-                    src={`https://api.dicebear.com/9.x/initials/svg?seed=${username || "CT"}`}
+                    src={avatarUrl}
                     className="me-2"
                   />
                   <span className="small">
-                    {username} <span className="text-muted">({role})</span>
+                    {username || "User"}{" "}
+                    <span className="text-muted">({role || "unknown"})</span>
                   </span>
                 </Dropdown.Toggle>
 
                 <Dropdown.Menu>
                   <Dropdown.Item as={Link} to="/profile">Profile</Dropdown.Item>
                   <Dropdown.Divider />
-                  <Dropdown.Item onClick={logout} className="text-danger">Logout</Dropdown.Item>
+                  <Dropdown.Item onClick={logout} className="text-danger">
+                    Logout
+                  </Dropdown.Item>
                 </Dropdown.Menu>
               </Dropdown>
             </div>

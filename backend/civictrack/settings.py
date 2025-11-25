@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Load local .env only in dev (Render uses environment variables)
+# Load local .env only in development
 load_dotenv(BASE_DIR / ".env.development")
 
 # ---------------- Security ----------------
@@ -54,9 +54,8 @@ INSTALLED_APPS = [
 
     # Local apps
     'accounts',
-    'moderation',
     'reports',
-    'ml',  
+    'ml',
 
     # Third-party
     'rest_framework',
@@ -95,14 +94,30 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'civictrack.wsgi.application'
 
-# ---------------- Database ----------------
-DATABASES = {
-    "default": dj_database_url.config(
-        default="postgres://arpit:Gurjar%401209@localhost:5432/civictrack",  # ✅ encoded @
-        conn_max_age=600,
-        ssl_require=not DEBUG,
-    )
-}
+# ------------------------------------------------
+# DATABASE CONFIG → Supports Local + Render
+# ------------------------------------------------
+if os.getenv("DATABASE_URL"):
+    # Production (Render)
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=os.getenv("DATABASE_URL"),
+            conn_max_age=600,
+            ssl_require=True,
+        )
+    }
+else:
+    # Local Database
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": "civictrack",
+            "USER": "arpit",
+            "PASSWORD": "Gurjar@1209",
+            "HOST": "localhost",
+            "PORT": "5432",
+        }
+    }
 
 # ---------------- Auth ----------------
 AUTH_PASSWORD_VALIDATORS = [
@@ -139,4 +154,3 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
-

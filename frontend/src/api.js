@@ -1,6 +1,6 @@
+// axiosInstance.js
 import axios from 'axios';
 
-// Use the environment variable, or fall back to localhost if it's not set
 const API_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';
 
 const axiosInstance = axios.create({
@@ -10,7 +10,6 @@ const axiosInstance = axios.create({
     },
 });
 
-// Request interceptor to add the access token to every request
 axiosInstance.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('access');
@@ -22,21 +21,19 @@ axiosInstance.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// Response interceptor to handle expired tokens
 axiosInstance.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config;
 
-        // If the error is 401 and it's not a retry request
-        if (error.response.status === 401 && !originalRequest._retry) {
+        if (error.response?.status === 401 && !originalRequest._retry) {
             originalRequest._retry = true;
 
             try {
                 const refreshToken = localStorage.getItem('refresh');
-                
-                // This line will now correctly use the environment-specific API_URL
-                const response = await axios.post(`${API_URL}/accounts/token/refresh/`, {
+
+                // FIXED URL HERE 🔥
+                const response = await axios.post(`${API_URL}/api/token/refresh/`, {
                     refresh: refreshToken,
                 });
 
@@ -46,7 +43,6 @@ axiosInstance.interceptors.response.use(
 
                 return axiosInstance(originalRequest);
             } catch (refreshError) {
-                // If refresh fails, logout the user
                 console.error("Token refresh failed:", refreshError);
                 localStorage.clear();
                 window.location.href = '/login';

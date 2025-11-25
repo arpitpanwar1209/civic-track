@@ -5,27 +5,36 @@ from .models import CustomUser
 
 User = get_user_model()
 
+
+# ---------------------------------------------------------
+# Secure Registration Serializer
+# ---------------------------------------------------------
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, validators=[validate_password])
-    role = serializers.ChoiceField(choices=User.ROLE_CHOICES)
+    password = serializers.CharField(
+        write_only=True,
+        validators=[validate_password]
+    )
 
     class Meta:
         model = User
-        fields = ("id", "username", "email", "password", "role", "profession")
+        fields = ("id", "username", "email", "password")
 
     def create(self, validated_data):
+        # Users ALWAYS register as consumers
         user = User.objects.create_user(
             username=validated_data["username"],
             email=validated_data.get("email", ""),
             password=validated_data["password"],
-            role=validated_data.get("role", "consumer"),
-            profession=validated_data.get("profession", None),
+            role="consumer",
+            profession=None,
         )
         return user
 
 
+# ---------------------------------------------------------
+# Public Profile Read Serializer
+# ---------------------------------------------------------
 class UserSerializer(serializers.ModelSerializer):
-    """Used when returning logged-in profile to frontend"""
     class Meta:
         model = CustomUser
         fields = [
@@ -37,11 +46,13 @@ class UserSerializer(serializers.ModelSerializer):
             "role",
             "profession",
         ]
-        read_only_fields = ["id", "role"]
+        read_only_fields = ["id", "role", "profession"]
 
 
+# ---------------------------------------------------------
+# Profile Update Serializer
+# ---------------------------------------------------------
 class UserProfileSerializer(serializers.ModelSerializer):
-    """Used for profile update settings page"""
     class Meta:
         model = CustomUser
         fields = [
@@ -52,6 +63,21 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "last_name",
             "contact",
             "profile_pic",
-            "profession",   # ✅ NOW EDITABLE
+            "profession",
         ]
         read_only_fields = ["id", "email"]
+
+    def validate(self, attrs):
+        user = self.instance
+
+        # Consumers cannot have profession
+        if user.role == "consumer":
+            attrs["profession"] = None
+
+        # Providers must have profession
+        if user.role == "provider" and not attrs.get("profession", user.profession):
+            raise serializers.ValidationError(
+                {"profession": "Profession is required for providers."}
+            )
+
+        return attrs

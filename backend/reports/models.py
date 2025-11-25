@@ -2,17 +2,19 @@ from django.db import models
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from ml.predict import predict_issue_category
+
 User = get_user_model()
 
 
 class Issue(models.Model):
+    # Unified categories — SAME KEYS as CustomUser.PROFESSION_CHOICES
     CATEGORY_CHOICES = [
         ('road', 'Road'),
         ('garbage', 'Garbage'),
         ('water', 'Water Supply'),
         ('electricity', 'Electricity'),
-        ('sewage', 'Sewage'),
-        ('lighting', 'Street Lighting'),
+        ('drainage', 'Drainage & Sewage'),
+        ('street_light', 'Street Lighting'),
         ('pollution', 'Pollution'),
         ('traffic', 'Traffic'),
         ('other', 'Other'),
@@ -34,26 +36,26 @@ class Issue(models.Model):
         ('urgent', 'Urgent'),
     ]
 
-    # ---------- Core Fields ----------
+    # ---------------- Core Fields ----------------
     title = models.CharField(max_length=255)
     description = models.TextField()
     category = models.CharField(
         max_length=50, choices=CATEGORY_CHOICES, blank=True, null=True
     )
 
-    # ---------- Location ----------
+    # ---------------- Location ----------------
     location = models.CharField(max_length=255, blank=True, null=True)
     latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
 
-    # ---------- Photo ----------
+    # ---------------- Images ----------------
     photo = models.ImageField(upload_to="issue_photos/", blank=True, null=True)
 
-    # ---------- Status & Priority ----------
+    # ---------------- Workflow ----------------
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default="medium")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
 
-    # ---------- Assignments ----------
+    # ---------------- Assignment ----------------
     assigned_to = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -61,7 +63,7 @@ class Issue(models.Model):
         blank=True,
         related_name="assigned_issues",
         limit_choices_to={'role': 'provider'},
-        help_text="Which provider/authority is responsible"
+        help_text="Assigned service provider",
     )
 
     reported_by = models.ForeignKey(
@@ -70,31 +72,33 @@ class Issue(models.Model):
         related_name="issues"
     )
 
-    # ---------- Timestamps ----------
+    # ---------------- Timestamps ----------------
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    # ---------- Moderation ----------
+    # ---------------- Moderation ----------------
     is_anonymous = models.BooleanField(default=False)
     feedback = models.TextField(blank=True, null=True)
     is_flagged = models.BooleanField(default=False)
     flag_reason = models.TextField(blank=True, null=True)
 
-    # ---------- Likes ----------
+    # ---------------- Likes ----------------
     likes = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
         related_name="liked_issues",
         blank=True
     )
 
-    _distance = None  # Runtime distance (from geolocation)
-
-    def __str__(self):
-        return f"{self.title} ({self.status})"
+    # Runtime variable (NOT stored in DB)
+    _distance = None
 
     class Meta:
         ordering = ["-created_at"]
 
+    def __str__(self):
+        return f"{self.title} ({self.status})"
+
+    # ---------------- Computed Properties ----------------
     @property
     def likes_count(self):
         return self.likes.count()
@@ -105,10 +109,11 @@ class Issue(models.Model):
 
     @property
     def distance_km(self):
-        return round(self._distance, 2) if self._distance is not None else None
+        return round(self._distance, 2) if self._distance else None
 
-    # ✅ ML Auto Category Prediction (only when category is blank)
+    # ---------------- ML Auto Category ----------------
     def save(self, *args, **kwargs):
+        # Autopredict only if category is missing
         if not self.category and self.description:
             predicted = predict_issue_category(self.description)
             if predicted in dict(self.CATEGORY_CHOICES):

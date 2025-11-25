@@ -1,23 +1,40 @@
 import React from "react";
 
-export function SkeletonLine({ width="100%", height=12, className="" }) {
+// Generic shimmering line
+export function SkeletonLine({
+  width = "100%",
+  height = 12,
+  radius = 6,
+  className = "",
+  style = {},
+}) {
   return (
     <div
-      className={`bg-light shimmer ${className}`}
-      style={{ width, height, borderRadius: 6 }}
+      className={`skeleton-line ${className}`}
+      style={{
+        width,
+        height,
+        borderRadius: radius,
+        ...style,
+      }}
     />
   );
 }
 
+// Issue card skeleton placeholder
 export function IssueCardSkeleton() {
   return (
-    <div className="card shadow-sm">
-      <div className="ratio ratio-16x9 bg-light shimmer" />
+    <div className="card shadow-sm skeleton-card">
+      {/* Image placeholder */}
+      <div className="skeleton-image" />
+
       <div className="card-body">
-        <SkeletonLine width="60%" className="mb-2"/>
-        <SkeletonLine width="40%" className="mb-3"/>
-        <SkeletonLine width="90%" className="mb-1"/>
-        <SkeletonLine width="80%" className="mb-1"/>
+        <SkeletonLine width="70%" height={16} className="mb-2" />
+        <SkeletonLine width="40%" height={14} className="mb-3" />
+
+        <SkeletonLine width="95%" className="mb-2" />
+        <SkeletonLine width="85%" className="mb-2" />
+        <SkeletonLine width="75%" className="mb-2" />
       </div>
     </div>
   );
