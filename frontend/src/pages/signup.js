@@ -11,7 +11,11 @@ import {
   Spinner,
 } from "react-bootstrap";
 
-const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
+/**
+ * Backend base = http://host/api/v1
+ */
+const API_BASE =
+  process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api/v1";
 
 export default function Signup() {
   const [formData, setFormData] = useState({
@@ -25,11 +29,18 @@ export default function Signup() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
   const navigate = useNavigate();
 
   const handleChange = (e) =>
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
 
+  // --------------------------------------------------
+  // Submit signup
+  // --------------------------------------------------
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -38,20 +49,21 @@ export default function Signup() {
 
     const payload = { ...formData };
 
-    // Providers must select a profession
+    // Consumers don't need profession
     if (payload.role === "consumer") {
       delete payload.profession;
     }
 
     try {
-      // ---------------------------------
-      // 1️⃣ SIGNUP API CALL
-      // ---------------------------------
-      const res = await fetch(`${API_URL}/api/accounts/signup/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      // 1️⃣ Signup
+      const res = await fetch(
+        `${API_BASE}/accounts/signup/`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
 
       const data = await res.json();
 
@@ -60,28 +72,34 @@ export default function Signup() {
           typeof data === "object"
             ? Object.entries(data)
                 .map(([k, v]) =>
-                  Array.isArray(v) ? `${k}: ${v.join(", ")}` : `${k}: ${v}`
+                  Array.isArray(v)
+                    ? `${k}: ${v.join(", ")}`
+                    : `${k}: ${v}`
                 )
                 .join("; ")
             : data.detail || "Signup failed.";
+
         setError(msg);
         setSubmitting(false);
         return;
       }
 
-      setSuccess("🎉 Account created successfully! Logging you in...");
+      setSuccess(
+        "🎉 Account created successfully! Logging you in…"
+      );
 
-      // ---------------------------------
-      // 2️⃣ AUTO LOGIN AFTER SIGNUP
-      // ---------------------------------
-      const loginRes = await fetch(`${API_URL}/api/token/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: formData.username,
-          password: formData.password,
-        }),
-      });
+      // 2️⃣ Auto-login
+      const loginRes = await fetch(
+        `${API_BASE}/token/`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: formData.username,
+            password: formData.password,
+          }),
+        }
+      );
 
       const loginData = await loginRes.json();
 
@@ -90,6 +108,10 @@ export default function Signup() {
         localStorage.setItem("refresh", loginData.refresh);
         localStorage.setItem("username", formData.username);
         localStorage.setItem("role", formData.role);
+        localStorage.setItem(
+          "profession",
+          formData.profession || ""
+        );
 
         setTimeout(() => navigate("/dashboard"), 1200);
       } else {
@@ -103,6 +125,9 @@ export default function Signup() {
     }
   };
 
+  // ==================================================
+  // RENDER
+  // ==================================================
   return (
     <Container
       className="d-flex align-items-center justify-content-center"
@@ -112,10 +137,16 @@ export default function Signup() {
         <Col md={6} lg={5} xl={4} className="mx-auto">
           <Card className="shadow-sm">
             <Card.Body className="p-4 p-md-5">
-              <h2 className="text-center fw-bold mb-4">Create an Account</h2>
+              <h2 className="text-center fw-bold mb-4">
+                Create an Account
+              </h2>
 
-              {success && <Alert variant="success">{success}</Alert>}
-              {error && <Alert variant="danger">{error}</Alert>}
+              {success && (
+                <Alert variant="success">{success}</Alert>
+              )}
+              {error && (
+                <Alert variant="danger">{error}</Alert>
+              )}
 
               <Form onSubmit={handleSubmit}>
                 <Form.Group className="mb-3">
@@ -125,7 +156,6 @@ export default function Signup() {
                     value={formData.username}
                     onChange={handleChange}
                     required
-                    autoComplete="username"
                   />
                 </Form.Group>
 
@@ -137,7 +167,6 @@ export default function Signup() {
                     value={formData.email}
                     onChange={handleChange}
                     required
-                    autoComplete="email"
                   />
                 </Form.Group>
 
@@ -149,7 +178,6 @@ export default function Signup() {
                     value={formData.password}
                     onChange={handleChange}
                     required
-                    autoComplete="new-password"
                   />
                 </Form.Group>
 
@@ -160,8 +188,12 @@ export default function Signup() {
                     value={formData.role}
                     onChange={handleChange}
                   >
-                    <option value="consumer">Consumer (Report Issues)</option>
-                    <option value="provider">Provider (Fix Issues)</option>
+                    <option value="consumer">
+                      Consumer (Report Issues)
+                    </option>
+                    <option value="provider">
+                      Provider (Fix Issues)
+                    </option>
                   </Form.Select>
                 </Form.Group>
 
@@ -175,19 +207,38 @@ export default function Signup() {
                       required
                     >
                       <option value="">-- Select --</option>
-                      <option value="electricity">Electricity</option>
-                      <option value="road">Road Maintenance</option>
-                      <option value="water">Water Supply</option>
-                      <option value="garbage">Garbage & Sanitation</option>
-                      <option value="drainage">Drainage & Sewage</option>
-                      <option value="street_light">Street Lighting</option>
+                      <option value="electricity">
+                        Electricity
+                      </option>
+                      <option value="road">
+                        Road Maintenance
+                      </option>
+                      <option value="water">
+                        Water Supply
+                      </option>
+                      <option value="garbage">
+                        Garbage & Sanitation
+                      </option>
+                      <option value="drainage">
+                        Drainage & Sewage
+                      </option>
+                      <option value="street_light">
+                        Street Lighting
+                      </option>
                     </Form.Select>
                   </Form.Group>
                 )}
 
-                <Button type="submit" className="w-100" disabled={submitting}>
+                <Button
+                  type="submit"
+                  className="w-100"
+                  disabled={submitting}
+                >
                   {submitting ? (
-                    <Spinner animation="border" size="sm" />
+                    <Spinner
+                      animation="border"
+                      size="sm"
+                    />
                   ) : (
                     "Sign Up"
                   )}
@@ -196,7 +247,8 @@ export default function Signup() {
 
               <div className="text-center mt-3">
                 <small>
-                  Already have an account? <Link to="/login">Log In</Link>
+                  Already have an account?{" "}
+                  <Link to="/login">Log In</Link>
                 </small>
               </div>
             </Card.Body>

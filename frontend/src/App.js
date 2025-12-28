@@ -3,7 +3,7 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 // Bootstrap
-import 'bootstrap/dist/css/bootstrap.min.css';
+import "bootstrap/dist/css/bootstrap.min.css";
 
 // Components
 import AppNavbar from "./components/AppNavbar";
@@ -13,6 +13,7 @@ import FabReport from "./components/FabReport";
 // Pages
 import Home from "./pages/home";
 import Issues from "./pages/issue";
+import IssueDetail from "./pages/IssueDetail"; // ⬅️ REQUIRED
 import Login from "./pages/login";
 import Signup from "./pages/signup";
 import Dashboard from "./pages/dashboard";
@@ -25,26 +26,39 @@ function App() {
   return (
     <Router>
       <ToasterProvider>
-        {/* ✅ Only one navbar */}
-        <AppNavbar />
 
-        {/* ✅ App Pages */}
-        <main style={{ padding: "20px" }}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/issues" element={<Issues />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/submit" element={<SubmitIssue />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/issues/:id/edit" element={<EditIssue />} />
-            <Route path="/reset-password/:uid/:token" element={<ResetPassword />} />
-          </Routes>
-        </main>
+        {/* Navbar should NOT be global */}
+        <Routes>
+          {/* Public / landing */}
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/reset-password/:uid/:token" element={<ResetPassword />} />
 
-        {/* ✅ Always accessible floating action button */}
-        <FabReport />
+          {/* App layout routes */}
+          <Route
+            path="/*"
+            element={
+              <>
+                <AppNavbar />
+
+                <main className="container py-4">
+                  <Routes>
+                    <Route path="issues" element={<Issues />} />
+                    <Route path="issues/:id" element={<IssueDetail />} />
+                    <Route path="issues/:id/edit" element={<EditIssue />} />
+                    <Route path="issues/submit" element={<SubmitIssue />} />
+                    <Route path="dashboard" element={<Dashboard />} />
+                    <Route path="profile" element={<Profile />} />
+                  </Routes>
+                </main>
+
+                <FabReport />
+              </>
+            }
+          />
+        </Routes>
+
       </ToasterProvider>
     </Router>
   );

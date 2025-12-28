@@ -12,10 +12,18 @@ import {
   Modal,
 } from "react-bootstrap";
 
-const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
+/**
+ * Backend base = http://host/api/v1
+ */
+const API_BASE =
+  process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api/v1";
 
 export default function Login() {
-  const [formData, setFormData] = useState({ username: "", password: "" });
+  const [formData, setFormData] = useState({
+    username: "",
+    password: "",
+  });
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -28,11 +36,14 @@ export default function Login() {
   const navigate = useNavigate();
 
   const handleChange = (e) =>
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
 
-  // -------------------------------
-  // LOGIN FUNCTION
-  // -------------------------------
+  // --------------------------------------------------
+  // LOGIN
+  // --------------------------------------------------
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -40,8 +51,8 @@ export default function Login() {
     setSubmitting(true);
 
     try {
-      // 1️⃣ Login (JWT)
-      const res = await fetch(`${API_URL}/api/token/`, {
+      // 1️⃣ JWT Login
+      const res = await fetch(`${API_BASE}/token/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -55,69 +66,81 @@ export default function Login() {
         return;
       }
 
-      // Store tokens
       localStorage.setItem("access", data.access);
       localStorage.setItem("refresh", data.refresh);
 
-      // 2️⃣ Fetch profile
-      const profileRes = await fetch(`${API_URL}/api/profile/`, {
-        headers: { Authorization: `Bearer ${data.access}` },
-      });
+      // 2️⃣ Load profile
+      const profileRes = await fetch(
+        `${API_BASE}/accounts/profile/`,
+        {
+          headers: {
+            Authorization: `Bearer ${data.access}`,
+          },
+        }
+      );
+
+      if (!profileRes.ok) {
+        throw new Error("Profile load failed");
+      }
 
       const profile = await profileRes.json();
 
-      if (!profileRes.ok) {
-        setError("Failed to load user profile. Please try again.");
-        setSubmitting(false);
-        return;
-      }
-
-      // Save profile to localStorage
       localStorage.setItem("username", profile.username);
       localStorage.setItem("role", profile.role);
-      localStorage.setItem("profession", profile.profession || "");
+      localStorage.setItem(
+        "profession",
+        profile.profession || ""
+      );
 
-      setSuccess("Login successful! Redirecting...");
+      setSuccess("Login successful! Redirecting…");
 
       setTimeout(() => navigate("/dashboard"), 1200);
     } catch (err) {
       console.error("Login error:", err);
-      setError("Unable to connect. Please try again later.");
+      setError("Unable to log in. Please try again.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  // -------------------------------
-  // PASSWORD RESET FUNCTION
-  // -------------------------------
+  // --------------------------------------------------
+  // PASSWORD RESET
+  // --------------------------------------------------
   const handlePasswordReset = async (e) => {
     e.preventDefault();
     setResetMsg("");
     setResetLoading(true);
 
     try {
-      const res = await fetch(`${API_URL}/api/accounts/password-reset/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: resetEmail }),
-      });
+      const res = await fetch(
+        `${API_BASE}/accounts/password-reset/`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: resetEmail }),
+        }
+      );
 
       const data = await res.json();
 
       if (res.ok) {
         setResetMsg("✅ Password reset link sent to your email.");
       } else {
-        setResetMsg(data.detail || "⚠️ Unable to send reset email.");
+        setResetMsg(
+          data.detail || "⚠️ Unable to send reset email."
+        );
       }
     } catch (err) {
       console.error(err);
-      setResetMsg("⚠️ Server error. Please try again.");
+      setResetMsg("⚠️ Server error. Try again later.");
     } finally {
       setResetLoading(false);
     }
   };
 
+  // ==================================================
+  // RENDER
+  // ==================================================
   return (
     <Container
       className="d-flex align-items-center justify-content-center"
@@ -127,17 +150,21 @@ export default function Login() {
         <Col md={6} lg={5} xl={4} className="mx-auto">
           <Card className="shadow-sm">
             <Card.Body className="p-4 p-md-5">
-              <h2 className="text-center fw-bold mb-4">Welcome Back</h2>
+              <h2 className="text-center fw-bold mb-4">
+                Welcome Back
+              </h2>
 
-              {success && <Alert variant="success">{success}</Alert>}
-              {error && <Alert variant="danger">{error}</Alert>}
+              {success && (
+                <Alert variant="success">{success}</Alert>
+              )}
+              {error && (
+                <Alert variant="danger">{error}</Alert>
+              )}
 
-              {/* LOGIN FORM */}
               <Form onSubmit={handleSubmit}>
                 <Form.Group className="mb-3">
                   <Form.Label>Username</Form.Label>
                   <Form.Control
-                    type="text"
                     name="username"
                     value={formData.username}
                     onChange={handleChange}
@@ -158,7 +185,6 @@ export default function Login() {
 
                 <Button
                   type="submit"
-                  variant="primary"
                   className="w-100"
                   disabled={submitting}
                 >
@@ -170,7 +196,7 @@ export default function Login() {
                         size="sm"
                         className="me-2"
                       />
-                      Logging In...
+                      Logging in…
                     </>
                   ) : (
                     "Log In"
@@ -178,13 +204,12 @@ export default function Login() {
                 </Button>
               </Form>
 
-              {/* Reset Password Link */}
               <div className="text-center mt-3">
                 <small>
                   Forgot your password?{" "}
                   <Button
                     variant="link"
-                    className="p-0 text-decoration-underline"
+                    className="p-0"
                     onClick={() => setShowModal(true)}
                   >
                     Reset here
@@ -194,7 +219,8 @@ export default function Login() {
 
               <div className="text-center mt-2">
                 <small>
-                  Don't have an account? <Link to="/signup">Sign Up</Link>
+                  Don’t have an account?{" "}
+                  <Link to="/signup">Sign Up</Link>
                 </small>
               </div>
             </Card.Body>
@@ -203,7 +229,11 @@ export default function Login() {
       </Row>
 
       {/* PASSWORD RESET MODAL */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} centered>
+      <Modal
+        show={showModal}
+        onHide={() => setShowModal(false)}
+        centered
+      >
         <Modal.Header closeButton>
           <Modal.Title>Password Reset</Modal.Title>
         </Modal.Header>
@@ -214,25 +244,30 @@ export default function Login() {
               <Form.Control
                 type="email"
                 value={resetEmail}
-                onChange={(e) => setResetEmail(e.target.value)}
+                onChange={(e) =>
+                  setResetEmail(e.target.value)
+                }
                 required
               />
             </Form.Group>
 
             <Button
               type="submit"
-              variant="primary"
               className="w-100 mt-3"
               disabled={resetLoading}
             >
-              {resetLoading ? "Sending..." : "Send Reset Link"}
+              {resetLoading ? "Sending…" : "Send Reset Link"}
             </Button>
           </Form>
 
           {resetMsg && (
             <Alert
               className="mt-3"
-              variant={resetMsg.includes("✅") ? "success" : "danger"}
+              variant={
+                resetMsg.startsWith("✅")
+                  ? "success"
+                  : "danger"
+              }
             >
               {resetMsg}
             </Alert>

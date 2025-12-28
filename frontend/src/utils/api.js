@@ -1,78 +1,123 @@
 // src/utils/api.js
-const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
-async function getStoredTokens() {
+/**
+ * Backend API base (versioned)
+ * NEVER append /api/v1 anywhere else in the app.
+ */
+const API_BASE =
+  process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api/v1";
+
+// --------------------------------------------------
+// Token helpers
+// --------------------------------------------------
+function getStoredTokens() {
   return {
     access: localStorage.getItem("access"),
     refresh: localStorage.getItem("refresh"),
   };
 }
 
-async function saveTokens({ access, refresh }) {
+function saveTokens({ access, refresh }) {
   if (access) localStorage.setItem("access", access);
   if (refresh) localStorage.setItem("refresh", refresh);
 }
 
+function clearTokens() {
+  localStorage.removeItem("access");
+  localStorage.removeItem("refresh");
+}
+
+// --------------------------------------------------
+// Refresh access token
+// --------------------------------------------------
 async function refreshAccessToken(refreshToken) {
-  const res = await fetch(`${API_URL}/api/token/refresh/`, {
+  const res = await fetch(`${API_BASE}/token/refresh/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refresh: refreshToken }),
   });
-  if (!res.ok) throw new Error("refresh_failed");
-  return res.json(); // { access: "...", refresh: "..." (maybe) }
+
+  if (!res.ok) {
+    throw new Error("refresh_failed");
+  }
+
+  return res.json(); // { access }
 }
 
+// --------------------------------------------------
+// Main API fetch wrapper
+// --------------------------------------------------
 export async function apiFetch(path, options = {}) {
-  const { access, refresh } = await getStoredTokens();
-  const headers = options.headers || {};
-  if (!headers["Content-Type"] && !(options.body instanceof FormData)) {
-    headers["Content-Type"] = "application/json";
+  const { access, refresh } = getStoredTokens();
+
+  const headers = {
+    ...(options.headers || {}),
+  };
+
+  // Auto JSON header unless FormData
+  if (!(options.body instanceof FormData)) {
+    headers["Content-Type"] =
+      headers["Content-Type"] || "application/json";
   }
-  if (access) headers["Authorization"] = `Bearer ${access}`;
 
-  const res = await fetch(`${API_URL}${path}`, { ...options, headers });
+  if (access) {
+    headers["Authorization"] = `Bearer ${access}`;
+  }
 
-  // If access token expired -> try refresh once
+  const request = () =>
+    fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers,
+    });
+
+  let res = await request();
+
+  // --------------------------------------------------
+  // Retry once on expired access token
+  // --------------------------------------------------
   if (res.status === 401 && refresh) {
     try {
       const tokenRes = await refreshAccessToken(refresh);
-      if (tokenRes.access) {
-        await saveTokens({ access: tokenRes.access, refresh: tokenRes.refresh ?? refresh });
-        // retry original request with new token
-        headers["Authorization"] = `Bearer ${tokenRes.access}`;
-        const retry = await fetch(`${API_URL}${path}`, { ...options, headers });
-        return handleJsonOrError(retry);
-      }
+      saveTokens({ access: tokenRes.access });
+
+      headers["Authorization"] = `Bearer ${tokenRes.access}`;
+      res = await request();
     } catch (err) {
-      // refresh failed — force logout
-      localStorage.removeItem("access");
-      localStorage.removeItem("refresh");
+      clearTokens();
       throw new Error("SessionExpired");
     }
   }
 
-  return handleJsonOrError(res);
+  return handleResponse(res);
 }
 
-async function handleJsonOrError(res) {
-  // Attempt to parse JSON; if non-json (HTML error page) return a structured error.
+// --------------------------------------------------
+// Response handler
+// --------------------------------------------------
+async function handleResponse(res) {
   const contentType = res.headers.get("Content-Type") || "";
+
   if (contentType.includes("application/json")) {
-    const json = await res.json();
+    const data = await res.json();
+
     if (!res.ok) {
-      const err = new Error(json.detail || JSON.stringify(json));
+      const err = new Error(
+        data.detail || "API request failed"
+      );
       err.status = res.status;
-      err.body = json;
+      err.body = data;
       throw err;
     }
-    return json;
-  } else {
-    // non-JSON (likely HTML) -> produce useful error
-    const text = await res.text();
-    const err = new Error(`Non-JSON response (status ${res.status})`);
-    err.status = res.status;
-    err.body = text.slice(0, 1000); // first 1000 chars
-    throw err;
+
+    return data;
   }
+
+  // Non-JSON (HTML, proxy error, etc.)
+  const text = await res.text();
+  const err = new Error(
+    `Non-JSON response (status ${res.status})`
+  );
+  err.status = res.status;
+  err.body = text.slice(0, 1000);
+  throw err;
 }

@@ -13,6 +13,12 @@ import {
 } from "react-bootstrap";
 import { FaArrowLeft } from "react-icons/fa";
 
+/**
+ * Backend base = http://host/api/v1
+ */
+const API_BASE =
+  process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api/v1";
+
 export default function Profile() {
   const [profile, setProfile] = useState({
     username: "",
@@ -28,19 +34,23 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
 
   const token = localStorage.getItem("access");
-  const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
-  // -----------------------------------------
-  // Load Profile
-  // -----------------------------------------
+  // --------------------------------------------------
+  // Load profile
+  // --------------------------------------------------
   useEffect(() => {
     async function loadProfile() {
       try {
-        const res = await fetch(`${API_URL}/api/profile/`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await fetch(
+          `${API_BASE}/accounts/profile/`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
-        if (!res.ok) throw new Error("Failed to fetch profile.");
+        if (!res.ok) throw new Error("Profile fetch failed");
 
         const data = await res.json();
 
@@ -50,37 +60,42 @@ export default function Profile() {
           contact: data.contact || "",
           profile_pic: data.profile_pic || null,
         });
-      } catch (e) {
-        console.error(e);
-        setMsg({ type: "danger", text: "⚠️ Failed to load profile" });
+      } catch (err) {
+        console.error(err);
+        setMsg({
+          type: "danger",
+          text: "⚠️ Failed to load profile.",
+        });
       } finally {
         setLoading(false);
       }
     }
-    loadProfile();
-  }, [API_URL, token]);
 
-  // -----------------------------------------
-  // Image Preview
-  // -----------------------------------------
+    if (token) loadProfile();
+  }, [token]);
+
+  // --------------------------------------------------
+  // Image change
+  // --------------------------------------------------
   const onFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     setPreview(URL.createObjectURL(file));
     setNewProfilePicFile(file);
   };
 
-  // -----------------------------------------
-  // Text Input Change
-  // -----------------------------------------
+  // --------------------------------------------------
+  // Text input
+  // --------------------------------------------------
   const onInputChange = (e) => {
     const { name, value } = e.target;
     setProfile((prev) => ({ ...prev, [name]: value }));
   };
 
-  // -----------------------------------------
-  // Save Profile
-  // -----------------------------------------
+  // --------------------------------------------------
+  // Save profile
+  // --------------------------------------------------
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -92,21 +107,31 @@ export default function Profile() {
       form.append("email", profile.email);
       form.append("contact", profile.contact);
 
-      if (newProfilePicFile) form.append("profile_pic", newProfilePicFile);
+      if (newProfilePicFile) {
+        form.append("profile_pic", newProfilePicFile);
+      }
 
-      const res = await fetch(`${API_URL}/api/profile/`, {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${token}` },
-        body: form,
-      });
+      const res = await fetch(
+        `${API_BASE}/accounts/profile/update/`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: form,
+        }
+      );
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.detail || "Failed to update profile");
+        throw new Error(data.detail || "Update failed");
       }
 
-      setMsg({ type: "success", text: "✅ Profile updated successfully!" });
+      setMsg({
+        type: "success",
+        text: "✅ Profile updated successfully!",
+      });
 
       setProfile((prev) => ({
         ...prev,
@@ -115,9 +140,12 @@ export default function Profile() {
 
       setPreview(null);
       setNewProfilePicFile(null);
-    } catch (e) {
-      console.error(e);
-      setMsg({ type: "danger", text: `⚠️ ${e.message}` });
+    } catch (err) {
+      console.error(err);
+      setMsg({
+        type: "danger",
+        text: `⚠️ ${err.message}`,
+      });
     } finally {
       setSaving(false);
     }
@@ -128,19 +156,25 @@ export default function Profile() {
     (profile.profile_pic
       ? profile.profile_pic.startsWith("http")
         ? profile.profile_pic
-        : `${API_URL}${profile.profile_pic}`
+        : `${API_BASE.replace("/api/v1", "")}${profile.profile_pic}`
       : "https://placehold.co/150x150/EFEFEF/AAAAAA?text=No+Image");
 
+  // ==================================================
+  // RENDER
+  // ==================================================
   return (
     <Container className="my-4">
       <Card className="shadow-sm">
-        <Card.Header
-          as="h2"
-          className="d-flex justify-content-between align-items-center"
-        >
+        <Card.Header className="d-flex justify-content-between align-items-center">
           👤 My Profile
-          <Button as={Link} to="/dashboard" variant="outline-secondary" size="sm">
-            <FaArrowLeft className="me-2" /> Back to Dashboard
+          <Button
+            as={Link}
+            to="/dashboard"
+            variant="outline-secondary"
+            size="sm"
+          >
+            <FaArrowLeft className="me-2" />
+            Back
           </Button>
         </Card.Header>
 
@@ -148,8 +182,8 @@ export default function Profile() {
           {msg.text && (
             <Alert
               variant={msg.type}
-              onClose={() => setMsg({ type: "", text: "" })}
               dismissible
+              onClose={() => setMsg({ type: "", text: "" })}
             >
               {msg.text}
             </Alert>
@@ -158,25 +192,25 @@ export default function Profile() {
           {loading ? (
             <div className="text-center p-5">
               <Spinner animation="border" />
-              <p className="mt-2">Loading Profile...</p>
+              <p className="mt-2">Loading profile…</p>
             </div>
           ) : (
-            <Form onSubmit={handleSave} encType="multipart/form-data">
+            <Form onSubmit={handleSave}>
               <Row>
-                {/* LEFT SIDE (IMAGE) */}
-                <Col md={4} className="text-center mb-4 mb-md-0">
+                {/* IMAGE */}
+                <Col md={4} className="text-center mb-4">
                   <Image
                     src={imgSrc}
                     roundedCircle
                     style={{
-                      width: "150px",
-                      height: "150px",
+                      width: 150,
+                      height: 150,
                       objectFit: "cover",
                       border: "4px solid #eee",
                     }}
                   />
 
-                  <Form.Group controlId="formFile" className="mt-3">
+                  <Form.Group className="mt-3">
                     <Form.Label className="btn btn-outline-primary btn-sm">
                       📷 Change Photo
                       <Form.Control
@@ -189,12 +223,11 @@ export default function Profile() {
                   </Form.Group>
                 </Col>
 
-                {/* RIGHT SIDE (FORM) */}
+                {/* FORM */}
                 <Col md={8}>
                   <Form.Group className="mb-3">
                     <Form.Label>Username</Form.Label>
                     <Form.Control
-                      type="text"
                       name="username"
                       value={profile.username}
                       onChange={onInputChange}
@@ -212,21 +245,24 @@ export default function Profile() {
                   </Form.Group>
 
                   <Form.Group className="mb-3">
-                    <Form.Label>Contact Number</Form.Label>
+                    <Form.Label>Contact</Form.Label>
                     <Form.Control
-                      type="text"
                       name="contact"
                       value={profile.contact}
                       onChange={onInputChange}
-                      placeholder="e.g., +91 9876543210"
                     />
                   </Form.Group>
 
-                  <Button type="submit" variant="primary" disabled={saving}>
+                  <Button type="submit" disabled={saving}>
                     {saving ? (
                       <>
-                        <Spinner as="span" animation="border" size="sm" className="me-2" />
-                        Saving...
+                        <Spinner
+                          as="span"
+                          animation="border"
+                          size="sm"
+                          className="me-2"
+                        />
+                        Saving…
                       </>
                     ) : (
                       "Save Changes"

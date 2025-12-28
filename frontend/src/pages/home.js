@@ -4,7 +4,11 @@ import "./home.css";
 import { Container, Row, Col, Button, Spinner, Alert } from "react-bootstrap";
 import { motion } from "framer-motion";
 
-const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
+/**
+ * Backend base = http://host/api/v1
+ */
+const API_BASE =
+  process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api/v1";
 
 export default function Home() {
   const [issues, setIssues] = useState([]);
@@ -13,7 +17,9 @@ export default function Home() {
 
   const token = localStorage.getItem("access");
 
+  // --------------------------------------------------
   // Load nearby issues
+  // --------------------------------------------------
   const loadNearbyIssues = async () => {
     if (!navigator.geolocation) {
       setError("Geolocation is not supported by your browser.");
@@ -27,8 +33,8 @@ export default function Home() {
       try {
         const { latitude, longitude } = pos.coords;
 
-        let res = await fetch(
-          `${API_URL}/api/issues/?nearby=${latitude},${longitude}&radius_km=5`,
+        const res = await fetch(
+          `${API_BASE}/reports/issues/?nearby=${latitude},${longitude}&radius_km=5`,
           token
             ? {
                 headers: {
@@ -38,12 +44,13 @@ export default function Home() {
             : {}
         );
 
-        if (!res.ok) throw new Error("Failed to fetch issues.");
+        if (!res.ok) throw new Error("Failed to fetch nearby issues.");
 
         const data = await res.json();
         setIssues(Array.isArray(data) ? data : data.results || []);
       } catch (err) {
-        setError(err.message || "Something went wrong.");
+        console.error(err);
+        setError("Unable to load nearby issues.");
         setIssues([]);
       } finally {
         setLoading(false);
@@ -59,13 +66,20 @@ export default function Home() {
       setLoading(false);
     };
 
-    navigator.geolocation.getCurrentPosition(successCallback, errorCallback);
+    navigator.geolocation.getCurrentPosition(
+      successCallback,
+      errorCallback
+    );
   };
 
   useEffect(() => {
     loadNearbyIssues();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ==================================================
+  // RENDER
+  // ==================================================
   return (
     <div className="home-wrapper">
       {/* HERO */}
@@ -86,7 +100,9 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7 }}
           >
-            MAKE YOUR COMMUNITY BETTER,<br />ONE REPORT AT A TIME
+            MAKE YOUR COMMUNITY BETTER,
+            <br />
+            ONE REPORT AT A TIME
           </motion.h1>
 
           <motion.p
@@ -95,8 +111,8 @@ export default function Home() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4, duration: 0.8 }}
           >
-            Report potholes, street light failures, garbage issues and more —
-            help your neighborhood stay safer and better.
+            Report potholes, street light failures, garbage issues and
+            more — help your neighborhood stay safer and better.
           </motion.p>
 
           <motion.div
@@ -105,7 +121,6 @@ export default function Home() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8, duration: 0.8 }}
           >
-            {/* Correct Submit Issue Route */}
             <Button
               as={Link}
               to="/issues/submit"
@@ -116,7 +131,6 @@ export default function Home() {
               REPORT AN ISSUE
             </Button>
 
-            {/* Correct Explore Route */}
             <Button
               as={Link}
               to="/issues"
@@ -164,11 +178,15 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
               >
-                {/* Correct Issue Details Page */}
-                <Link to={`/issues/${i.id}`} className="issue-card-link">
+                <Link
+                  to={`/issues/${i.id}`}
+                  className="issue-card-link"
+                >
                   <h5>{i.title}</h5>
                   <p className="small text-muted">
-                    {i.category || i.predicted_category || "Other"}
+                    {i.category ||
+                      i.predicted_category ||
+                      "Other"}
                   </p>
                 </Link>
               </motion.div>

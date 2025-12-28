@@ -1,30 +1,49 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import BackButton from "../components/BackButton";
-import { Container, Card, Form, Button, Alert, Spinner } from "react-bootstrap";
+import {
+  Container,
+  Card,
+  Form,
+  Button,
+  Alert,
+  Spinner,
+} from "react-bootstrap";
 
-const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
+/**
+ * Backend base = http://host/api/v1
+ */
+const API_BASE =
+  process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api/v1";
 
 export default function ResetPassword() {
   const { uid, token } = useParams();
+  const navigate = useNavigate();
+
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
 
+  // --------------------------------------------------
+  // Submit new password
+  // --------------------------------------------------
   const submit = async () => {
-    if (!password.trim())
-      return setMsg("⚠️ Please enter a new password.");
+    if (!password.trim()) {
+      setMsg("⚠️ Please enter a new password.");
+      return;
+    }
 
-    if (password.length < 6)
-      return setMsg("⚠️ Password must be at least 6 characters long.");
+    if (password.length < 6) {
+      setMsg("⚠️ Password must be at least 6 characters long.");
+      return;
+    }
 
     setLoading(true);
     setMsg("");
 
     try {
       const res = await fetch(
-        `${API_URL}/api/accounts/password-reset-confirm/${uid}/${token}/`,
+        `${API_BASE}/accounts/password-reset-confirm/${uid}/${token}/`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -38,26 +57,36 @@ export default function ResetPassword() {
         setMsg("✅ Password reset successfully!");
         setTimeout(() => navigate("/login"), 1500);
       } else {
-        setMsg(data.detail || "⚠️ Invalid or expired reset link.");
+        setMsg(
+          data.detail ||
+            "⚠️ Invalid or expired password reset link."
+        );
       }
     } catch (err) {
       console.error(err);
-      setMsg("⚠️ Server error. Try again.");
+      setMsg("⚠️ Server error. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
+  // ==================================================
+  // RENDER
+  // ==================================================
   return (
     <Container className="py-5" style={{ maxWidth: 500 }}>
       <BackButton />
 
       <Card className="shadow-sm">
         <Card.Body>
-          <h3 className="fw-bold mb-3 text-center">🔐 Reset Password</h3>
+          <h3 className="fw-bold mb-3 text-center">
+            🔐 Reset Password
+          </h3>
 
           {msg && (
-            <Alert variant={msg.includes("✅") ? "success" : "danger"}>
+            <Alert
+              variant={msg.startsWith("✅") ? "success" : "danger"}
+            >
               {msg}
             </Alert>
           )}
@@ -83,8 +112,13 @@ export default function ResetPassword() {
             >
               {loading ? (
                 <>
-                  <Spinner as="span" animation="border" size="sm" className="me-2" />
-                  Updating...
+                  <Spinner
+                    as="span"
+                    animation="border"
+                    size="sm"
+                    className="me-2"
+                  />
+                  Updating…
                 </>
               ) : (
                 "Reset Password"

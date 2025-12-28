@@ -1,23 +1,44 @@
+// src/services/issueService.js
 import api from "./axios";
 
-// Create Issue
-export const createIssue = (data) =>
-  api.post("/reports/issues/", data, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+/**
+ * NOTE:
+ * axios instance MUST have:
+ * baseURL = http://host/api/v1
+ */
 
-// Fetch Issues (consumer OR provider filtered automatically)
-export const getIssues = () => api.get("/reports/issues/");
+// --------------------------------------------------
+// Create issue (multipart)
+// --------------------------------------------------
+export const createIssue = (formData) =>
+  api.post("/reports/issues/", formData); // DO NOT set Content-Type manually
 
-// Claim Issue (provider)
-export const claimIssue = (id) => api.post(`/reports/issues/${id}/claim/`);
+// --------------------------------------------------
+// Fetch issues (consumer or provider)
+// --------------------------------------------------
+export const getIssues = () =>
+  api.get("/reports/issues/");
 
-// Resolve Issue (provider)
-export const resolveIssue = (id) => api.post(`/reports/issues/${id}/resolve/`);
+// --------------------------------------------------
+// Fetch nearby issues
+// /reports/issues/?nearby=lat,lon&radius_km=5
+// --------------------------------------------------
+export const getNearbyIssues = (lat, lon, radiusKm = 5) =>
+  api.get(
+    `/reports/issues/?nearby=${lat},${lon}&radius_km=${radiusKm}`
+  );
 
-// Like Issue
-export const likeIssue = (id) => api.post(`/reports/issues/${id}/like/`);
+// --------------------------------------------------
+// Update issue (used for resolve, edit, status change)
+// --------------------------------------------------
+export const updateIssue = (id, payload) =>
+  api.patch(`/reports/issues/${id}/`, payload);
 
-// Geo filter: /reports/issues/?nearby=30.00,76.99&radius_km=5
-export const getNearbyIssues = (lat, lon, radius) =>
-  api.get(`/reports/issues/?nearby=${lat},${lon}&radius_km=${radius}`);
+// --------------------------------------------------
+// OPTIONAL ACTIONS (ONLY if backend supports them)
+// --------------------------------------------------
+export const claimIssue = (id) =>
+  api.post(`/reports/issues/${id}/claim/`);
+
+export const likeIssue = (id) =>
+  api.post(`/reports/issues/${id}/like/`);

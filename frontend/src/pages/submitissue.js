@@ -1,6 +1,12 @@
 import React, { useState } from "react";
 import { Form, Button, Alert, Spinner } from "react-bootstrap";
 
+/**
+ * Backend base = http://host/api/v1
+ */
+const API_BASE =
+  process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api/v1";
+
 export default function SubmitIssue({ onSubmitted }) {
   const [formData, setFormData] = useState({
     title: "",
@@ -17,35 +23,46 @@ export default function SubmitIssue({ onSubmitted }) {
   const [error, setError] = useState(null);
 
   const token = localStorage.getItem("access");
-  const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
+  // --------------------------------------------------
+  // Handle input change
+  // --------------------------------------------------
   const handleChange = (e) => {
     const { name, value, files } = e.target;
 
     if (name === "photo") {
       setFormData((prev) => ({ ...prev, photo: files[0] }));
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
+      return;
     }
 
-    // Trigger ML category prediction
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Trigger ML prediction
     if (name === "description" && value.trim().length > 10) {
       predictCategory(value);
     }
   };
 
+  // --------------------------------------------------
+  // Predict category (ML)
+  // --------------------------------------------------
   const predictCategory = async (description) => {
     try {
       setLoadingPrediction(true);
 
-      const res = await fetch(`${API_URL}/api/predict-category/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ description }),
-      });
+      const res = await fetch(
+        `${API_BASE}/reports/predict-category/`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token
+              ? { Authorization: `Bearer ${token}` }
+              : {}),
+          },
+          body: JSON.stringify({ description }),
+        }
+      );
 
       const data = await res.json();
 
@@ -65,6 +82,9 @@ export default function SubmitIssue({ onSubmitted }) {
     }
   };
 
+  // --------------------------------------------------
+  // Submit issue
+  // --------------------------------------------------
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
@@ -77,17 +97,21 @@ export default function SubmitIssue({ onSubmitted }) {
 
     const submitData = new FormData();
     Object.entries(formData).forEach(([key, value]) => {
-      if (value !== null) submitData.append(key, value);
+      if (value !== null && value !== "")
+        submitData.append(key, value);
     });
 
     try {
-      const res = await fetch(`${API_URL}/api/issues/`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: submitData,
-      });
+      const res = await fetch(
+        `${API_BASE}/reports/issues/`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: submitData,
+        }
+      );
 
       const data = await res.json().catch(() => null);
 
@@ -98,7 +122,6 @@ export default function SubmitIssue({ onSubmitted }) {
 
       setSuccess("✅ Issue submitted successfully!");
 
-      // Reset form
       setFormData({
         title: "",
         description: "",
@@ -109,7 +132,7 @@ export default function SubmitIssue({ onSubmitted }) {
       });
       setPredictedCategory(null);
 
-      if (onSubmitted && typeof onSubmitted === "function") {
+      if (typeof onSubmitted === "function") {
         onSubmitted(data);
       }
     } catch (err) {
@@ -118,19 +141,23 @@ export default function SubmitIssue({ onSubmitted }) {
     }
   };
 
+  // ==================================================
+  // RENDER
+  // ==================================================
   return (
-    <Form onSubmit={handleSubmit} className="p-3 shadow-sm rounded bg-light">
+    <Form
+      onSubmit={handleSubmit}
+      className="p-3 shadow-sm rounded bg-light"
+    >
       {success && <Alert variant="success">{success}</Alert>}
       {error && <Alert variant="danger">{error}</Alert>}
 
       <Form.Group className="mb-3">
         <Form.Label>Title</Form.Label>
         <Form.Control
-          type="text"
           name="title"
           value={formData.title}
           onChange={handleChange}
-          placeholder="Enter a short title"
           required
         />
       </Form.Group>
@@ -143,19 +170,20 @@ export default function SubmitIssue({ onSubmitted }) {
           name="description"
           value={formData.description}
           onChange={handleChange}
-          placeholder="Describe the issue"
           required
         />
 
         {loadingPrediction && (
           <div className="mt-2 text-muted small">
-            <Spinner animation="border" size="sm" /> Detecting category…
+            <Spinner animation="border" size="sm" /> Detecting
+            category…
           </div>
         )}
 
         {predictedCategory && (
           <Alert variant="info" className="mt-2 py-2">
-            🤖 Suggested Category: <strong>{predictedCategory}</strong>
+            🤖 Suggested Category:{" "}
+            <strong>{predictedCategory}</strong>
           </Alert>
         )}
       </Form.Group>
@@ -184,11 +212,10 @@ export default function SubmitIssue({ onSubmitted }) {
       <Form.Group className="mb-3">
         <Form.Label>Location</Form.Label>
         <Form.Control
-          type="text"
           name="location"
           value={formData.location}
           onChange={handleChange}
-          placeholder="Enter location (optional)"
+          placeholder="Optional"
         />
       </Form.Group>
 
@@ -216,7 +243,7 @@ export default function SubmitIssue({ onSubmitted }) {
         </Form.Select>
       </Form.Group>
 
-      <Button type="submit" variant="primary" className="w-100">
+      <Button type="submit" className="w-100">
         Submit Issue
       </Button>
     </Form>

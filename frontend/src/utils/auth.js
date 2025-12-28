@@ -1,40 +1,64 @@
-// Add this line at the top of your file
-const API_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';
+// src/utils/getAccessToken.js
+
+/**
+ * Backend base (versioned)
+ */
+const API_BASE =
+  process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api/v1";
+
+function safeDecodeJwt(token) {
+  try {
+    const payload = token.split(".")[1];
+    return JSON.parse(atob(payload));
+  } catch {
+    return null;
+  }
+}
 
 export async function getAccessToken() {
   let access = localStorage.getItem("access");
   const refresh = localStorage.getItem("refresh");
 
-  // CRITICAL FIX 1: Check if tokens exist before trying to use them
   if (!access || !refresh) {
-    // If no tokens, the user is not logged in
-    throw new Error("User not authenticated.");
+    throw new Error("UserNotAuthenticated");
   }
 
-  // Check if token expired
-  const payload = JSON.parse(atob(access.split(".")[1]));
-  const expiry = payload.exp * 1000; // ms
+  const payload = safeDecodeJwt(access);
 
-  if (Date.now() >= expiry) {
-    console.log("🔄 Refreshing token...");
-    
-    // THE CHANGE YOU ASKED FOR: Use the API_URL variable
-    const res = await fetch(`${API_URL}/api/token/refresh/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh }),
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-    }
-      localStorage.setItem("access", data.access);
-      access = data.access;
-    } else {
-      // CRITICAL FIX 2: If refresh fails, log the user out
-      localStorage.clear();
-      throw new Error("Refresh token expired — please login again.");
-    }
+  // If token is invalid, force logout
+  if (!payload || !payload.exp) {
+    localStorage.clear();
+    throw new Error("InvalidToken");
   }
 
-  return access;
+  const expiryMs = payload.exp * 1000;
+
+  // Token still valid
+  if (Date.now() < expiryMs) {
+    return access;
+  }
+
+  // --------------------------------------------------
+  // Refresh access token
+  // --------------------------------------------------
+  const res = await fetch(`${API_BASE}/token/refresh/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh }),
+  });
+
+  if (!res.ok) {
+    localStorage.clear();
+    throw new Error("SessionExpired");
+  }
+
+  const data = await res.json();
+
+  if (!data.access) {
+    localStorage.clear();
+    throw new Error("InvalidRefreshResponse");
+  }
+
+  localStorage.setItem("access", data.access);
+  return data.access;
+}
