@@ -151,37 +151,37 @@ export default function Home() {
         </Container>
       </section>
 
-      {/* ================= FOOTER ================= */}
-      <footer className="footer-section">
-        <Container>
-          <Row>
-            <Col md={4}>
-              <h5>Navigation</h5>
-              <Link to="/">Home</Link>
-              <Link to="/issues">Explore Issues</Link>
-              <Link to="/issues/submit">Report Issue</Link>
-            </Col>
+{/* ================= FOOTER ================= */}
+<footer className="footer-section">
+  <Container>
+    <Row>
+      <Col md={4}>
+        <h5>Navigation</h5>
+        <Link to="/">Home</Link>
+        <Link to="/issues">Explore Issues</Link>
+        <Link to="/issues/submit">Report Issue</Link>
+      </Col>
 
-            <Col md={4}>
-              <h5>Resources</h5>
-              <Link to="/resources/authorities">Local Authorities</Link>
-              <Link to="/resources/safety">Safety Tips</Link>
-              <Link to="/resources/guidelines">Community Guidelines</Link>
-            </Col>
+      <Col md={4}>
+        <h5>Resources</h5>
+        <Link to="/resources/authorities">Local Authorities</Link>
+        <Link to="/resources/safety">Safety Tips</Link>
+        <Link to="/resources/guidelines">Community Guidelines</Link>
+      </Col>
 
-            <Col md={4}>
-              <h5>Legal</h5>
-              <Link to="/legal/privacy">Privacy Policy</Link>
-              <Link to="/legal/terms">Terms & Conditions</Link>
-              <Link to="/about">About Us</Link>
-            </Col>
-          </Row>
+      <Col md={4}>
+        <h5>Legal</h5>
+        <Link to="/legal/privacy">Privacy Policy</Link>
+        <Link to="/legal/terms">Terms & Conditions</Link>
+        <Link to="/about">About Us</Link>
+      </Col>
+    </Row>
 
-          <p className="text-center mt-4 small">
-            © 2025 CivicTrack. All rights reserved.
-          </p>
-        </Container>
-      </footer>
+    <p className="text-center mt-4 small">
+      © 2025 CivicTrack. All rights reserved.
+    </p>
+  </Container>
+</footer>
     </div>
   );
 }
