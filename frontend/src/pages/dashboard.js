@@ -11,22 +11,13 @@ import {
   Badge,
 } from "react-bootstrap";
 
-import {
-  FaThumbsUp,
-  FaEdit,
-  FaTrash,
-  FaUser,
-  FaCheck,
-  FaHandshake,
-  FaMapMarkerAlt,
-} from "react-icons/fa";
+import { FaThumbsUp, FaUser } from "react-icons/fa";
 
 import IssueMap from "../components/issuemap";
 import SubmitIssue from "./submitissue";
 import BackButton from "../components/BackButton";
 
 /**
- * IMPORTANT:
  * Backend base = http://host/api/v1
  */
 const API_BASE =
@@ -45,7 +36,6 @@ export default function Dashboard() {
     localStorage.getItem("profession") || ""
   );
 
-  const username = localStorage.getItem("username") || "";
   const access = localStorage.getItem("access");
   const refresh = localStorage.getItem("refresh");
 
@@ -54,9 +44,9 @@ export default function Dashboard() {
     [access]
   );
 
-  // ---------------------------------------------------
-  // Refresh access token
-  // ---------------------------------------------------
+  // -----------------------------
+  // Refresh token
+  // -----------------------------
   const refreshAccessToken = async () => {
     if (!refresh) {
       localStorage.clear();
@@ -71,7 +61,7 @@ export default function Dashboard() {
         body: JSON.stringify({ refresh }),
       });
 
-      if (!res.ok) throw new Error("refresh failed");
+      if (!res.ok) throw new Error();
 
       const data = await res.json();
       localStorage.setItem("access", data.access);
@@ -83,18 +73,16 @@ export default function Dashboard() {
     }
   };
 
-  // ---------------------------------------------------
-  // Authenticated fetch wrapper
-  // ---------------------------------------------------
+  // -----------------------------
+  // Auth fetch
+  // -----------------------------
   const authedFetch = async (url, opts = {}) => {
     const doFetch = async (token) =>
       fetch(url, {
         ...opts,
         headers: {
           ...(opts.headers || {}),
-          ...(token
-            ? { Authorization: `Bearer ${token}` }
-            : authHeader),
+          ...(token ? { Authorization: `Bearer ${token}` } : authHeader),
         },
       });
 
@@ -107,17 +95,13 @@ export default function Dashboard() {
     return res;
   };
 
-  // ---------------------------------------------------
+  // -----------------------------
   // Load profile
-  // ---------------------------------------------------
+  // -----------------------------
   const loadProfile = async () => {
     try {
-      const res = await authedFetch(
-        `${API_BASE}/accounts/profile/`,
-        { method: "GET" }
-      );
-
-      if (!res.ok) throw new Error("profile failed");
+      const res = await authedFetch(`${API_BASE}/accounts/profile/`);
+      if (!res.ok) throw new Error();
 
       const data = await res.json();
 
@@ -137,9 +121,9 @@ export default function Dashboard() {
     }
   };
 
-  // ---------------------------------------------------
+  // -----------------------------
   // Load issues
-  // ---------------------------------------------------
+  // -----------------------------
   const loadIssues = async () => {
     setLoading(true);
     try {
@@ -148,8 +132,8 @@ export default function Dashboard() {
           ? `${API_BASE}/reports/issues/?profession=${profession}`
           : `${API_BASE}/reports/issues/`;
 
-      const res = await authedFetch(url, { method: "GET" });
-      if (!res.ok) throw new Error("issues failed");
+      const res = await authedFetch(url);
+      if (!res.ok) throw new Error();
 
       const data = await res.json();
       setIssues(Array.isArray(data) ? data : data.results || []);
@@ -160,9 +144,9 @@ export default function Dashboard() {
     }
   };
 
-  // ---------------------------------------------------
+  // -----------------------------
   // Like issue
-  // ---------------------------------------------------
+  // -----------------------------
   const handleLike = async (id) => {
     const res = await authedFetch(
       `${API_BASE}/reports/issues/${id}/like/`,
@@ -178,59 +162,16 @@ export default function Dashboard() {
     );
   };
 
-  // ---------------------------------------------------
-  // Delete issue
-  // ---------------------------------------------------
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this issue?")) return;
-
-    const res = await authedFetch(
-      `${API_BASE}/reports/issues/${id}/`,
-      { method: "DELETE" }
-    );
-
-    if (res.ok)
-      setIssues((prev) => prev.filter((i) => i.id !== id));
-  };
-
-  // ---------------------------------------------------
-  // Claim issue (provider)
-  // ---------------------------------------------------
-  const handleClaim = async (id) => {
-    const res = await authedFetch(
-      `${API_BASE}/reports/issues/${id}/claim/`,
-      { method: "POST" }
-    );
-
-    if (res.ok) await loadIssues();
-  };
-
-  // ---------------------------------------------------
-  // Mark resolved
-  // ---------------------------------------------------
-  const handleMarkResolved = async (id) => {
-    const res = await authedFetch(
-      `${API_BASE}/reports/issues/${id}/`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "resolved" }),
-      }
-    );
-
-    if (res.ok) await loadIssues();
-  };
-
-  // ---------------------------------------------------
+  // -----------------------------
   // After submit
-  // ---------------------------------------------------
+  // -----------------------------
   const handleIssueSubmitted = (issue) => {
     setIssues((prev) => [issue, ...prev]);
   };
 
-  // ---------------------------------------------------
+  // -----------------------------
   // Mount
-  // ---------------------------------------------------
+  // -----------------------------
   useEffect(() => {
     if (!access || !refresh) {
       navigate("/login");
@@ -249,9 +190,9 @@ export default function Dashboard() {
       ? "🛠️ Issues Needing Your Attention"
       : "📌 My Issues";
 
-  // ===================================================
+  // =============================
   // RENDER
-  // ===================================================
+  // =============================
   return (
     <Container className="py-4">
       <BackButton />

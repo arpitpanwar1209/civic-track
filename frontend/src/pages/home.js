@@ -3,10 +3,8 @@ import { Link } from "react-router-dom";
 import "./home.css";
 import { Container, Row, Col, Button, Spinner, Alert } from "react-bootstrap";
 import { motion } from "framer-motion";
+import HomeHeader from "../components/HomeHeader"; // ✅ ADD THIS
 
-/**
- * Backend base = http://host/api/v1
- */
 const API_BASE =
   process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api/v1";
 
@@ -17,88 +15,64 @@ export default function Home() {
 
   const token = localStorage.getItem("access");
 
-  // --------------------------------------------------
-  // Load nearby issues
-  // --------------------------------------------------
-  const loadNearbyIssues = async () => {
+  // ==========================
+  // FETCH NEARBY ISSUES
+  // ==========================
+  useEffect(() => {
     if (!navigator.geolocation) {
       setError("Geolocation is not supported by your browser.");
       return;
     }
 
     setLoading(true);
-    setError(null);
-
-    const successCallback = async (pos) => {
-      try {
-        const { latitude, longitude } = pos.coords;
-
-        const res = await fetch(
-          `${API_BASE}/reports/issues/?nearby=${latitude},${longitude}&radius_km=5`,
-          token
-            ? {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              }
-            : {}
-        );
-
-        if (!res.ok) throw new Error("Failed to fetch nearby issues.");
-
-        const data = await res.json();
-        setIssues(Array.isArray(data) ? data : data.results || []);
-      } catch (err) {
-        console.error(err);
-        setError("Unable to load nearby issues.");
-        setIssues([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    const errorCallback = (err) => {
-      if (err.code === err.PERMISSION_DENIED) {
-        setError("Enable location access to view nearby issues.");
-      } else {
-        setError("Unable to determine your location.");
-      }
-      setLoading(false);
-    };
 
     navigator.geolocation.getCurrentPosition(
-      successCallback,
-      errorCallback
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+
+          const res = await fetch(
+            `${API_BASE}/reports/issues/?nearby=${latitude},${longitude}&radius_km=5`,
+            token
+              ? { headers: { Authorization: `Bearer ${token}` } }
+              : {}
+          );
+
+          if (!res.ok) throw new Error();
+
+          const data = await res.json();
+          setIssues(Array.isArray(data) ? data : data.results || []);
+        } catch {
+          setError("Unable to load nearby issues.");
+        } finally {
+          setLoading(false);
+        }
+      },
+      () => {
+        setError("Enable location access to view nearby issues.");
+        setLoading(false);
+      }
     );
-  };
+  }, [token]);
 
-  useEffect(() => {
-    loadNearbyIssues();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ==================================================
+  // ==========================
   // RENDER
-  // ==================================================
+  // ==========================
   return (
     <div className="home-wrapper">
-      {/* HERO */}
-      <div className="hero-section shadow-sm">
-        <div className="topbar d-flex justify-content-between align-items-center px-3 py-3">
-          <h2 className="brand">
-            <Link to="/" className="brand-link">
-              CivicTrack <span className="rocket">🚀</span>
-            </Link>
-          </h2>
-          <div className="menu-icon">☰</div>
-        </div>
+      {/* ================= HERO ================= */}
+      <section className="hero-section">
+        {/* ✅ HEADER FIX */}
+        <HomeHeader />
 
-        <Container className="text-center py-5">
+        <div className="hero-overlay" />
+
+        <Container className="hero-content">
           <motion.h1
             className="hero-title"
-            initial={{ opacity: 0, y: -20 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
+            transition={{ duration: 0.6 }}
           >
             MAKE YOUR COMMUNITY BETTER,
             <br />
@@ -109,24 +83,18 @@ export default function Home() {
             className="hero-sub"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.4, duration: 0.8 }}
+            transition={{ delay: 0.3 }}
           >
-            Report potholes, street light failures, garbage issues and
-            more — help your neighborhood stay safer and better.
+            Report potholes, street light failures, garbage issues and more —
+            help your neighborhood stay safer and better.
           </motion.p>
 
-          <motion.div
-            className="mt-4 d-flex justify-content-center gap-3 flex-wrap"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8, duration: 0.8 }}
-          >
+          <div className="hero-actions">
             <Button
               as={Link}
               to="/issues/submit"
-              variant="primary"
               size="lg"
-              className="cta-btn"
+              className="cta-btn primary"
             >
               REPORT AN ISSUE
             </Button>
@@ -134,100 +102,82 @@ export default function Home() {
             <Button
               as={Link}
               to="/issues"
-              variant="outline-primary"
               size="lg"
-              className="cta-btn"
+              className="cta-btn secondary"
             >
               EXPLORE ISSUES
             </Button>
-          </motion.div>
-
-          <motion.img
-            src="/illustration-city.png"
-            alt="city"
-            className="hero-illustration"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 1.1, duration: 1 }}
-          />
-        </Container>
-      </div>
-
-      {/* NEARBY ISSUES */}
-      <Container className="py-4">
-        <h3 className="section-title">📍 Issues Near You</h3>
-
-        {error && <Alert variant="danger">{error}</Alert>}
-
-        {loading ? (
-          <div className="text-center py-4">
-            <Spinner animation="border" />
-            <p className="mt-2">Detecting nearby issues...</p>
           </div>
-        ) : !error && issues.length === 0 ? (
-          <Alert variant="info">
-            No issues found near your location.
-          </Alert>
-        ) : (
-          <div className="issue-list">
-            {issues.map((i) => (
-              <motion.div
-                key={i.id}
-                className="issue-card shadow-sm"
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-              >
+        </Container>
+      </section>
+
+      {/* ================= NEARBY ISSUES ================= */}
+      <section className="issues-section">
+        <Container>
+          <h3 className="section-title">📍 Issues Near You</h3>
+
+          {error && <Alert variant="danger">{error}</Alert>}
+
+          {loading && (
+            <div className="text-center py-4">
+              <Spinner animation="border" />
+              <p className="mt-2">Detecting nearby issues…</p>
+            </div>
+          )}
+
+          {!loading && !error && issues.length === 0 && (
+            <Alert variant="info">No issues found near your location.</Alert>
+          )}
+
+          <Row className="g-3">
+            {issues.map((issue) => (
+              <Col key={issue.id} md={6} lg={4}>
                 <Link
-                  to={`/issues/${i.id}`}
+                  to={`/issues/${issue.id}`}
                   className="issue-card-link"
                 >
-                  <h5>{i.title}</h5>
-                  <p className="small text-muted">
-                    {i.category ||
-                      i.predicted_category ||
-                      "Other"}
-                  </p>
+                  <div className="issue-card">
+                    <h5>{issue.title}</h5>
+                    <p className="text-muted small">
+                      {issue.category ||
+                        issue.predicted_category ||
+                        "Other"}
+                    </p>
+                  </div>
                 </Link>
-              </motion.div>
+              </Col>
             ))}
-          </div>
-        )}
-      </Container>
+          </Row>
+        </Container>
+      </section>
 
-      {/* FOOTER */}
+      {/* ================= FOOTER ================= */}
       <footer className="footer-section">
         <Container>
           <Row>
             <Col md={4}>
               <h5>Navigation</h5>
-              <ul>
-                <li><Link to="/">Home</Link></li>
-                <li><Link to="/issues">Explore Issues</Link></li>
-                <li><Link to="/issues/submit">Report Issue</Link></li>
-              </ul>
+              <Link to="/">Home</Link>
+              <Link to="/issues">Explore Issues</Link>
+              <Link to="/issues/submit">Report Issue</Link>
             </Col>
 
             <Col md={4}>
               <h5>Resources</h5>
-              <ul>
-                <li><Link to="/resources/authorities">Local Authorities</Link></li>
-                <li><Link to="/resources/safety">Safety Tips</Link></li>
-                <li><Link to="/resources/guidelines">Community Guidelines</Link></li>
-              </ul>
+              <Link to="/resources/authorities">Local Authorities</Link>
+              <Link to="/resources/safety">Safety Tips</Link>
+              <Link to="/resources/guidelines">Community Guidelines</Link>
             </Col>
 
             <Col md={4}>
               <h5>Legal</h5>
-              <ul>
-                <li><Link to="/legal/privacy">Privacy Policy</Link></li>
-                <li><Link to="/legal/terms">Terms & Conditions</Link></li>
-                <li><Link to="/about">About Us</Link></li>
-              </ul>
+              <Link to="/legal/privacy">Privacy Policy</Link>
+              <Link to="/legal/terms">Terms & Conditions</Link>
+              <Link to="/about">About Us</Link>
             </Col>
           </Row>
 
-          <p className="text-center mt-3">
+          <p className="text-center mt-4 small">
             © 2025 CivicTrack. All rights reserved.
           </p>
         </Container>

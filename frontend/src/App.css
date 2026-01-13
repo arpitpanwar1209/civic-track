@@ -1,87 +1,149 @@
-/* Remove this line (moved to index.js)
-@import "leaflet/dist/leaflet.css";
-*/
+/* ============================
+   Base / Utilities
+   ============================ */
 
 /* Tailwind (kept) */
 @import "tailwindcss/base";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
+body {
+  scroll-behavior: smooth;
+}
 
 .App {
   text-align: center;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+/* ============================
+   Layout (CRITICAL – FIXED)
+   ============================ */
+
+/* Reserve space for navbar + FAB safely */
+.app-content {
+  padding-top: 56px;                 /* navbar height */
+  padding-bottom: 88px;              /* FAB + safe space */
+  min-height: 100dvh;                /* mobile-safe viewport */
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
+/* Fallback for older browsers */
+@supports not (height: 100dvh) {
+  .app-content {
+    min-height: calc(100vh - 56px);
   }
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+/* ============================
+   Navbar (SCOPED, SAFE)
+   ============================ */
+
+/* default navbar transition */
+.transition-nav {
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-.App-link {
-  color: #61dafb;
+/* Home page glass navbar only */
+.home-wrapper .transition-nav {
+  backdrop-filter: blur(6px);
+  background-color: rgba(255, 255, 255, 0.85) !important;
 }
 
-@keyframes App-logo-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+/* After scroll (scoped) */
+.home-wrapper .nav-scrolled,
+.app-content .nav-scrolled {
+  background-color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
 
+/* ============================
+   Nav Links
+   ============================ */
 
-/* --- NAVBAR HOVER & CLICK EFFECTS --- */
 .nav-link,
 .nav-link-brand {
-  transition: all 0.2s ease-in-out;
+  transition: transform 0.2s ease-in-out, color 0.2s ease-in-out;
 }
 
 .nav-link:hover,
 .nav-link-brand:hover {
-  transform: scale(1.1);
+  transform: scale(1.05);
   color: #17a2b8 !important;
 }
 
 .nav-link:active,
 .nav-link-brand:active {
   transform: scale(0.95);
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
+/* ============================
+   Brand dot
+   ============================ */
 
-/* --- Shimmer Effect --- */
+.brand-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-left: 0.25rem;
+  border-radius: 50%;
+  background: linear-gradient(45deg, #0d6efd, #20c997);
+}
+
+/* ============================
+   Cards
+   ============================ */
+
+.card {
+  border-radius: 12px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+}
+
+/* ============================
+   Buttons (Bootstrap-safe)
+   ============================ */
+
+.btn {
+  border-radius: 8px;
+}
+
+/* ============================
+   Shimmer Effect
+   ============================ */
+
 .shimmer {
   position: relative;
   overflow: hidden;
 }
+
 .shimmer::after {
   content: "";
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.4), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255,255,255,0.4),
+    transparent
+  );
   animation: shimmer 1.3s infinite;
 }
+
 @keyframes shimmer {
-  100% { transform: translateX(100%); }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
+/* ============================
+   Text helpers
+   ============================ */
 
-/* --- Multi-line text truncation --- */
 .text-truncate-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -89,43 +151,10 @@
   overflow: hidden;
 }
 
+/* ============================
+   Floating Action Button
+   ============================ */
 
-/* Card + hover lift */
-.hover-lift {
-  transition: transform .15s ease, box-shadow .15s ease;
-}
-.hover-lift:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 .75rem 1.5rem rgba(0,0,0,.08) !important;
-}
-
-.brand-dot {
-  display:inline-block;
-  width:.5rem;
-  height:.5rem;
-  margin-left:.25rem;
-  border-radius:50%;
-  background: linear-gradient(45deg, #0d6efd, #20c997);
-}
-
-
-/* Hero gradient & floating UI */
-.hero-gradient {
-  background: radial-gradient(1200px 400px at 20% -20%, rgba(13,110,253,.25), transparent 60%),
-              radial-gradient(1200px 400px at 80% -10%, rgba(32,201,151,.25), transparent 60%),
-              linear-gradient(180deg, #0d6efd 0%, #0b5ed7 100%);
-}
-
-.floating {
-  animation: floatY 6s ease-in-out infinite;
-}
-@keyframes floatY {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-8px); }
-}
-
-
-/* Floating Action Button */
 .fab-report {
   position: fixed;
   right: 18px;
@@ -133,46 +162,15 @@
   width: 54px;
   height: 54px;
   border-radius: 50%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   z-index: 1040;
 }
 
-
-/* Sticky Glass Navbar */
-.navbar {
-  position: sticky;
-  top: 0;
-  z-index: 1030;
-  backdrop-filter: blur(6px);
-  background-color: rgba(0,0,0,0.6) !important;
-  transition: all 0.3s ease-in-out;
-}
-
-.navbar.scrolled {
-  padding-top: 0.2rem !important;
-  padding-bottom: 0.2rem !important;
-  background-color: rgba(0,0,0,0.85) !important;
-}
-
-body {
-  scroll-behavior: smooth;
-}
-
-
-/* Card Lift Hover */
-.card {
-  border-radius: 12px;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-.card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 16px rgba(0,0,0,0.15);
-}
-
-
-/* Buttons round */
-button {
-  border-radius: 8px !important;
+/* Prevent FAB covering content on very small screens */
+@media (max-width: 576px) {
+  .fab-report {
+    bottom: 24px;
+  }
 }

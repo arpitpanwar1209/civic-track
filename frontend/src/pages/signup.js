@@ -10,6 +10,7 @@ import {
   Alert,
   Spinner,
 } from "react-bootstrap";
+import BackButton from "../components/BackButton";
 
 /**
  * Backend base = http://host/api/v1
@@ -56,14 +57,11 @@ export default function Signup() {
 
     try {
       // 1️⃣ Signup
-      const res = await fetch(
-        `${API_BASE}/accounts/signup/`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
+      const res = await fetch(`${API_BASE}/accounts/signup/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
       const data = await res.json();
 
@@ -80,26 +78,20 @@ export default function Signup() {
             : data.detail || "Signup failed.";
 
         setError(msg);
-        setSubmitting(false);
         return;
       }
 
-      setSuccess(
-        "🎉 Account created successfully! Logging you in…"
-      );
+      setSuccess("🎉 Account created successfully! Logging you in…");
 
       // 2️⃣ Auto-login
-      const loginRes = await fetch(
-        `${API_BASE}/token/`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            username: formData.username,
-            password: formData.password,
-          }),
-        }
-      );
+      const loginRes = await fetch(`${API_BASE}/token/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: formData.username,
+          password: formData.password,
+        }),
+      });
 
       const loginData = await loginRes.json();
 
@@ -108,10 +100,7 @@ export default function Signup() {
         localStorage.setItem("refresh", loginData.refresh);
         localStorage.setItem("username", formData.username);
         localStorage.setItem("role", formData.role);
-        localStorage.setItem(
-          "profession",
-          formData.profession || ""
-        );
+        localStorage.setItem("profession", formData.profession || "");
 
         setTimeout(() => navigate("/dashboard"), 1200);
       } else {
@@ -129,24 +118,20 @@ export default function Signup() {
   // RENDER
   // ==================================================
   return (
-    <Container
-      className="d-flex align-items-center justify-content-center"
-      style={{ minHeight: "80vh" }}
-    >
-      <Row className="w-100">
-        <Col md={6} lg={5} xl={4} className="mx-auto">
+    <Container className="py-4">
+      {/* ✅ BACK BUTTON */}
+      <BackButton fallback="/" />
+
+      <Row className="justify-content-center">
+        <Col md={6} lg={5} xl={4}>
           <Card className="shadow-sm">
             <Card.Body className="p-4 p-md-5">
               <h2 className="text-center fw-bold mb-4">
                 Create an Account
               </h2>
 
-              {success && (
-                <Alert variant="success">{success}</Alert>
-              )}
-              {error && (
-                <Alert variant="danger">{error}</Alert>
-              )}
+              {success && <Alert variant="success">{success}</Alert>}
+              {error && <Alert variant="danger">{error}</Alert>}
 
               <Form onSubmit={handleSubmit}>
                 <Form.Group className="mb-3">
@@ -207,24 +192,12 @@ export default function Signup() {
                       required
                     >
                       <option value="">-- Select --</option>
-                      <option value="electricity">
-                        Electricity
-                      </option>
-                      <option value="road">
-                        Road Maintenance
-                      </option>
-                      <option value="water">
-                        Water Supply
-                      </option>
-                      <option value="garbage">
-                        Garbage & Sanitation
-                      </option>
-                      <option value="drainage">
-                        Drainage & Sewage
-                      </option>
-                      <option value="street_light">
-                        Street Lighting
-                      </option>
+                      <option value="electricity">Electricity</option>
+                      <option value="road">Road Maintenance</option>
+                      <option value="water">Water Supply</option>
+                      <option value="garbage">Garbage & Sanitation</option>
+                      <option value="drainage">Drainage & Sewage</option>
+                      <option value="street_light">Street Lighting</option>
                     </Form.Select>
                   </Form.Group>
                 )}
@@ -235,10 +208,7 @@ export default function Signup() {
                   disabled={submitting}
                 >
                   {submitting ? (
-                    <Spinner
-                      animation="border"
-                      size="sm"
-                    />
+                    <Spinner animation="border" size="sm" />
                   ) : (
                     "Sign Up"
                   )}

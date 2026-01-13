@@ -11,6 +11,7 @@ import {
   Spinner,
   Modal,
 } from "react-bootstrap";
+import BackButton from "../components/BackButton"; // ✅ ADD THIS
 
 /**
  * Backend base = http://host/api/v1
@@ -51,7 +52,6 @@ export default function Login() {
     setSubmitting(true);
 
     try {
-      // 1️⃣ JWT Login
       const res = await fetch(`${API_BASE}/token/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -62,14 +62,12 @@ export default function Login() {
 
       if (!res.ok) {
         setError(data.detail || "Invalid username or password.");
-        setSubmitting(false);
         return;
       }
 
       localStorage.setItem("access", data.access);
       localStorage.setItem("refresh", data.refresh);
 
-      // 2️⃣ Load profile
       const profileRes = await fetch(
         `${API_BASE}/accounts/profile/`,
         {
@@ -79,24 +77,17 @@ export default function Login() {
         }
       );
 
-      if (!profileRes.ok) {
-        throw new Error("Profile load failed");
-      }
+      if (!profileRes.ok) throw new Error();
 
       const profile = await profileRes.json();
 
       localStorage.setItem("username", profile.username);
       localStorage.setItem("role", profile.role);
-      localStorage.setItem(
-        "profession",
-        profile.profession || ""
-      );
+      localStorage.setItem("profession", profile.profession || "");
 
       setSuccess("Login successful! Redirecting…");
-
       setTimeout(() => navigate("/dashboard"), 1200);
-    } catch (err) {
-      console.error("Login error:", err);
+    } catch {
       setError("Unable to log in. Please try again.");
     } finally {
       setSubmitting(false);
@@ -123,15 +114,12 @@ export default function Login() {
 
       const data = await res.json();
 
-      if (res.ok) {
-        setResetMsg("✅ Password reset link sent to your email.");
-      } else {
-        setResetMsg(
-          data.detail || "⚠️ Unable to send reset email."
-        );
-      }
-    } catch (err) {
-      console.error(err);
+      setResetMsg(
+        res.ok
+          ? "✅ Password reset link sent to your email."
+          : data.detail || "⚠️ Unable to send reset email."
+      );
+    } catch {
       setResetMsg("⚠️ Server error. Try again later.");
     } finally {
       setResetLoading(false);
@@ -142,24 +130,20 @@ export default function Login() {
   // RENDER
   // ==================================================
   return (
-    <Container
-      className="d-flex align-items-center justify-content-center"
-      style={{ minHeight: "80vh" }}
-    >
-      <Row className="w-100">
-        <Col md={6} lg={5} xl={4} className="mx-auto">
+    <Container className="py-4">
+      {/* ✅ BACK BUTTON FIX */}
+      <BackButton fallback="/" />
+
+      <Row className="justify-content-center">
+        <Col md={6} lg={5} xl={4}>
           <Card className="shadow-sm">
             <Card.Body className="p-4 p-md-5">
               <h2 className="text-center fw-bold mb-4">
                 Welcome Back
               </h2>
 
-              {success && (
-                <Alert variant="success">{success}</Alert>
-              )}
-              {error && (
-                <Alert variant="danger">{error}</Alert>
-              )}
+              {success && <Alert variant="success">{success}</Alert>}
+              {error && <Alert variant="danger">{error}</Alert>}
 
               <Form onSubmit={handleSubmit}>
                 <Form.Group className="mb-3">
@@ -229,11 +213,7 @@ export default function Login() {
       </Row>
 
       {/* PASSWORD RESET MODAL */}
-      <Modal
-        show={showModal}
-        onHide={() => setShowModal(false)}
-        centered
-      >
+      <Modal show={showModal} onHide={() => setShowModal(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>Password Reset</Modal.Title>
         </Modal.Header>
@@ -244,9 +224,7 @@ export default function Login() {
               <Form.Control
                 type="email"
                 value={resetEmail}
-                onChange={(e) =>
-                  setResetEmail(e.target.value)
-                }
+                onChange={(e) => setResetEmail(e.target.value)}
                 required
               />
             </Form.Group>
@@ -264,9 +242,7 @@ export default function Login() {
             <Alert
               className="mt-3"
               variant={
-                resetMsg.startsWith("✅")
-                  ? "success"
-                  : "danger"
+                resetMsg.startsWith("✅") ? "success" : "danger"
               }
             >
               {resetMsg}
