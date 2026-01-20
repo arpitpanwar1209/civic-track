@@ -1,39 +1,66 @@
 from rest_framework import serializers
-from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from .models import CustomUser
 
-User = get_user_model()
 
-
-# ---------------------------------------------------------
-# Secure Registration Serializer
-# ---------------------------------------------------------
+# =========================================================
+# REGISTER SERIALIZER (CONSUMER / PROVIDER)
+# =========================================================
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
         write_only=True,
-        validators=[validate_password]
+        validators=[validate_password],
+    )
+
+    role = serializers.ChoiceField(
+        choices=CustomUser.ROLE_CHOICES
+    )
+
+    profession = serializers.CharField(
+        required=False,
+        allow_null=True,
+        allow_blank=True,
     )
 
     class Meta:
-        model = User
-        fields = ("id", "username", "email", "password")
+        model = CustomUser
+        fields = (
+            "id",
+            "username",
+            "email",
+            "password",
+            "role",
+            "profession",
+        )
+
+    def validate(self, attrs):
+        role = attrs.get("role")
+        profession = attrs.get("profession")
+
+        # Consumers must NOT have profession
+        if role == "consumer":
+            attrs["profession"] = None
+
+        # Providers MUST have profession
+        if role == "provider" and not profession:
+            raise serializers.ValidationError(
+                {"profession": "Profession is required for providers."}
+            )
+
+        return attrs
 
     def create(self, validated_data):
-        # Users ALWAYS register as consumers
-        user = User.objects.create_user(
-            username=validated_data["username"],
-            email=validated_data.get("email", ""),
-            password=validated_data["password"],
-            role="consumer",
-            profession=None,
+        password = validated_data.pop("password")
+        user = CustomUser.objects.create_user(
+            password=password,
+            **validated_data
         )
         return user
 
 
-# ---------------------------------------------------------
-# Public Profile Read Serializer
-# ---------------------------------------------------------
+# =========================================================
+# USER PROFILE READ SERIALIZER (GET /profile/)
+# =========================================================
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
@@ -46,38 +73,29 @@ class UserSerializer(serializers.ModelSerializer):
             "role",
             "profession",
         ]
-        read_only_fields = ["id", "role", "profession"]
-
-
-# ---------------------------------------------------------
-# Profile Update Serializer
-# ---------------------------------------------------------
-class UserProfileSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CustomUser
-        fields = [
+        read_only_fields = [
             "id",
             "username",
             "email",
-            "first_name",
-            "last_name",
-            "contact",
-            "profile_pic",
+            "role",
             "profession",
         ]
-        read_only_fields = ["id", "email"]
 
-    def validate(self, attrs):
-        user = self.instance
 
-        # Consumers cannot have profession
-        if user.role == "consumer":
-            attrs["profession"] = None
+# =========================================================
+# USER PROFILE UPDATE SERIALIZER (PATCH /profile/update/)
+# =========================================================
+class UserProfileUpdateSerializer(serializers.ModelSerializer):
+    """
+    STRICT PATCH serializer.
+    Only fields that are allowed to change.
+    NO cross-field validation.
+    NO role/profession logic.
+    """
 
-        # Providers must have profession
-        if user.role == "provider" and not attrs.get("profession", user.profession):
-            raise serializers.ValidationError(
-                {"profession": "Profession is required for providers."}
-            )
-
-        return attrs
+    class Meta:
+        model = CustomUser
+        fields = [
+            "contact",
+            "profile_pic",
+        ]

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import BackButton from "../components/BackButton";
 import {
   Container,
@@ -9,53 +9,53 @@ import {
 } from "react-bootstrap";
 import { Link } from "react-router-dom";
 
-/**
- * Backend base = http://host/api/v1
- */
-const API_BASE =
-  process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api/v1";
+import { AuthContext } from "../auth/AuthContext";
 
 export default function IssueList() {
+  const { authedFetch, user } = useContext(AuthContext);
+
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const access = localStorage.getItem("access");
-
   useEffect(() => {
-    async function loadIssues() {
-      try {
-        const res = await fetch(
-          `${API_BASE}/reports/issues/`,
-          {
-            headers: access
-              ? { Authorization: `Bearer ${access}` }
-              : {},
-          }
-        );
+    const loadIssues = async () => {
+      if (!user?.role) {
+        setError("Invalid user role.");
+        setLoading(false);
+        return;
+      }
 
-        if (!res.ok) {
-          throw new Error(`Failed with ${res.status}`);
-        }
+      // 🔥 ROLE-BASED ENDPOINT (FIX)
+      const endpoint =
+        user.role === "consumer"
+          ? "/reports/consumer/"
+          : "/reports/provider/";
+
+      try {
+        const res = await authedFetch(endpoint);
+        if (!res.ok) throw new Error();
 
         const data = await res.json();
         setIssues(Array.isArray(data) ? data : data.results || []);
-      } catch (err) {
-        console.error("Error fetching issues:", err);
+      } catch {
         setError("Unable to load reported issues.");
       } finally {
         setLoading(false);
       }
-    }
+    };
 
     loadIssues();
-  }, [access]);
+    // eslint-disable-next-line
+  }, [user]);
 
   return (
     <Container className="py-4" style={{ maxWidth: 800 }}>
       <BackButton />
 
-      <h2 className="fw-bold mb-4">📝 All Reported Issues</h2>
+      <h2 className="fw-bold mb-4">
+        📝 {user?.role === "producer" ? "Relevant Issues" : "My Issues"}
+      </h2>
 
       {error && <Alert variant="danger">{error}</Alert>}
 
@@ -65,9 +65,7 @@ export default function IssueList() {
           <p className="mt-2">Loading issues…</p>
         </div>
       ) : issues.length === 0 ? (
-        <Alert variant="info">
-          No issues have been reported yet.
-        </Alert>
+        <Alert variant="info">No issues found.</Alert>
       ) : (
         <ListGroup>
           {issues.map((issue) => (

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState, useContext, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   Container,
@@ -11,22 +11,29 @@ import {
   Spinner,
   Modal,
 } from "react-bootstrap";
-import BackButton from "../components/BackButton"; // ✅ ADD THIS
 
-/**
- * Backend base = http://host/api/v1
- */
+import { AuthContext } from "../auth/AuthContext";
+import BackButton from "../components/BackButton";
+
 const API_BASE =
   process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api/v1";
 
 export default function Login() {
+  const {
+    setUser,
+    setAccess, // ✅ THIS WAS MISSING
+    user,
+    loading: authLoading,
+  } = useContext(AuthContext);
+
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     username: "",
     password: "",
   });
 
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const [showModal, setShowModal] = useState(false);
@@ -34,7 +41,18 @@ export default function Login() {
   const [resetMsg, setResetMsg] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
 
-  const navigate = useNavigate();
+  // ==================================================
+  // Redirect if already logged in
+  // ==================================================
+  useEffect(() => {
+    if (authLoading || !user) return;
+
+    if (user.role === "provider") {
+      navigate("/provider/dashboard", { replace: true });
+    } else {
+      navigate("/consumer/dashboard", { replace: true });
+    }
+  }, [authLoading, user, navigate]);
 
   const handleChange = (e) =>
     setFormData((prev) => ({
@@ -42,16 +60,16 @@ export default function Login() {
       [e.target.name]: e.target.value,
     }));
 
-  // --------------------------------------------------
-  // LOGIN
-  // --------------------------------------------------
+  // ==================================================
+  // LOGIN (FINAL + CORRECT)
+  // ==================================================
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    setSuccess("");
     setSubmitting(true);
 
     try {
+      // 1️⃣ Get tokens
       const res = await fetch(`${API_BASE}/token/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -59,15 +77,17 @@ export default function Login() {
       });
 
       const data = await res.json();
-
       if (!res.ok) {
         setError(data.detail || "Invalid username or password.");
         return;
       }
 
+      // ✅ STORE TOKENS
       localStorage.setItem("access", data.access);
       localStorage.setItem("refresh", data.refresh);
+      setAccess(data.access); // 🔥 REQUIRED
 
+      // 2️⃣ Fetch profile (NOW AUTH WORKS)
       const profileRes = await fetch(
         `${API_BASE}/accounts/profile/`,
         {
@@ -77,26 +97,30 @@ export default function Login() {
         }
       );
 
-      if (!profileRes.ok) throw new Error();
+      if (!profileRes.ok) {
+        throw new Error("Profile fetch failed");
+      }
 
       const profile = await profileRes.json();
+      setUser(profile);
 
-      localStorage.setItem("username", profile.username);
-      localStorage.setItem("role", profile.role);
-      localStorage.setItem("profession", profile.profession || "");
-
-      setSuccess("Login successful! Redirecting…");
-      setTimeout(() => navigate("/dashboard"), 1200);
-    } catch {
+      // 3️⃣ Role-based redirect
+      if (profile.role === "provider") {
+        navigate("/provider/dashboard", { replace: true });
+      } else {
+        navigate("/consumer/dashboard", { replace: true });
+      }
+    } catch (err) {
+      console.error(err);
       setError("Unable to log in. Please try again.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  // --------------------------------------------------
-  // PASSWORD RESET
-  // --------------------------------------------------
+  // ==================================================
+  // PASSWORD RESET (UNCHANGED)
+  // ==================================================
   const handlePasswordReset = async (e) => {
     e.preventDefault();
     setResetMsg("");
@@ -113,7 +137,6 @@ export default function Login() {
       );
 
       const data = await res.json();
-
       setResetMsg(
         res.ok
           ? "✅ Password reset link sent to your email."
@@ -131,7 +154,6 @@ export default function Login() {
   // ==================================================
   return (
     <Container className="py-4">
-      {/* ✅ BACK BUTTON FIX */}
       <BackButton fallback="/" />
 
       <Row className="justify-content-center">
@@ -142,7 +164,6 @@ export default function Login() {
                 Welcome Back
               </h2>
 
-              {success && <Alert variant="success">{success}</Alert>}
               {error && <Alert variant="danger">{error}</Alert>}
 
               <Form onSubmit={handleSubmit}>
@@ -164,6 +185,7 @@ export default function Login() {
                     value={formData.password}
                     onChange={handleChange}
                     required
+                    autoComplete="current-password"
                   />
                 </Form.Group>
 

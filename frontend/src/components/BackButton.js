@@ -1,20 +1,30 @@
 import { useNavigate } from "react-router-dom";
+import { useContext } from "react";
 import { Button } from "react-bootstrap";
 import { FaArrowLeft } from "react-icons/fa";
+import { AuthContext } from "../auth/AuthContext";
 
 export default function BackButton({
   label = "Back",
-  fallback = "/dashboard",
   className = "",
   ...props
 }) {
   const navigate = useNavigate();
+  const { user } = useContext(AuthContext);
 
   const handleBack = () => {
     if (window.history.length > 2) {
       navigate(-1);
+      return;
+    }
+
+    // Role-aware fallback
+    if (user?.role === "provider") {
+      navigate("/provider/dashboard", { replace: true });
+    } else if (user?.role === "consumer") {
+      navigate("/consumer/dashboard", { replace: true });
     } else {
-      navigate(fallback);
+      navigate("/login", { replace: true });
     }
   };
 

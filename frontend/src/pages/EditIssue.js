@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import BackButton from "../components/BackButton";
 import {
@@ -11,23 +11,21 @@ import {
   Image,
 } from "react-bootstrap";
 
-/**
- * Backend base = http://host/api/v1
- */
-const API_BASE =
-  process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api/v1";
+import { AuthContext } from "../auth/AuthContext";
 
 export default function EditIssue() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { authedFetch, user, loading: authLoading } =
+    useContext(AuthContext);
 
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     category: "",
-    priority: "",
+    priority: "medium",
     location: "",
-    status: "",
+    status: "pending", // ✅ VALID BACKEND STATUS
     photo: null,
   });
 
@@ -36,39 +34,46 @@ export default function EditIssue() {
   const [msg, setMsg] = useState({ type: "", text: "" });
   const [preview, setPreview] = useState(null);
 
-  const token = localStorage.getItem("access");
+  // =====================================================
+  // Guard: ONLY consumers allowed
+  // =====================================================
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) return;
 
-  // -------------------------
+    if (user.role !== "consumer") {
+      navigate("/provider/dashboard", { replace: true });
+    }
+  }, [authLoading, user, navigate]);
+
+  // =====================================================
   // Handle input
-  // -------------------------
+  // =====================================================
   const handleInput = (e) => {
     const { name, value, files } = e.target;
 
     if (name === "photo") {
-      const file = files[0];
+      const file = files?.[0] || null;
       setFormData((prev) => ({ ...prev, photo: file }));
       if (file) setPreview(URL.createObjectURL(file));
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
+      return;
     }
+
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // -------------------------
+  // =====================================================
   // Load issue
-  // -------------------------
+  // =====================================================
   useEffect(() => {
-    async function loadIssue() {
-      try {
-        const res = await fetch(
-          `${API_BASE}/reports/issues/${id}/`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+    if (!user || user.role !== "consumer") return;
 
-        if (!res.ok) throw new Error("load failed");
+    const loadIssue = async () => {
+      try {
+        const res = await authedFetch(
+          `/reports/consumer/issues/${id}/`
+        );
+        if (!res.ok) throw new Error();
 
         const data = await res.json();
 
@@ -78,19 +83,14 @@ export default function EditIssue() {
           category: data.category || "",
           priority: data.priority || "medium",
           location: data.location || "",
-          status: data.status || "submitted",
+          status: data.status || "pending",
           photo: null,
         });
 
         if (data.photo) {
-          setPreview(
-            data.photo.startsWith("http")
-              ? data.photo
-              : `${API_BASE.replace("/api/v1", "")}${data.photo}`
-          );
+          setPreview(data.photo);
         }
-      } catch (err) {
-        console.error(err);
+      } catch {
         setMsg({
           type: "danger",
           text: "⚠️ Unable to load issue.",
@@ -98,22 +98,18 @@ export default function EditIssue() {
       } finally {
         setLoading(false);
       }
-    }
-
-    if (!token) {
-      navigate("/login");
-      return;
-    }
+    };
 
     loadIssue();
-  }, [id, token, navigate]);
+  }, [id, user, authedFetch]);
 
-  // -------------------------
+  // =====================================================
   // Submit update
-  // -------------------------
+  // =====================================================
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
+    setMsg({ type: "", text: "" });
 
     const form = new FormData();
     Object.entries(formData).forEach(([key, val]) => {
@@ -122,27 +118,26 @@ export default function EditIssue() {
     });
 
     try {
-      const res = await fetch(
-        `${API_BASE}/reports/issues/${id}/`,
+      const res = await authedFetch(
+        `/reports/consumer/issues/${id}/`,
         {
           method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
           body: form,
         }
       );
 
-      if (!res.ok) throw new Error("save failed");
+      if (!res.ok) throw new Error();
 
       setMsg({
         type: "success",
         text: "✅ Issue updated successfully!",
       });
 
-      setTimeout(() => navigate("/dashboard"), 1200);
-    } catch (err) {
-      console.error(err);
+      setTimeout(
+        () => navigate("/consumer/dashboard"),
+        800
+      );
+    } catch {
       setMsg({
         type: "danger",
         text: "⚠️ Failed to update issue.",
@@ -152,9 +147,30 @@ export default function EditIssue() {
     }
   };
 
-  // ==================================================
-  // RENDER
-  // ==================================================
+  // =====================================================
+  // Render guards
+  // =====================================================
+  if (authLoading || loading) {
+    return (
+      <Container className="py-5 text-center">
+        <Spinner animation="border" />
+      </Container>
+    );
+  }
+
+  if (!user || user.role !== "consumer") {
+    return (
+      <Container className="py-5">
+        <Alert variant="danger">
+          You are not authorized to edit this issue.
+        </Alert>
+      </Container>
+    );
+  }
+
+  // =====================================================
+  // Render
+  // =====================================================
   return (
     <Container className="py-4" style={{ maxWidth: 700 }}>
       <BackButton />
@@ -165,123 +181,104 @@ export default function EditIssue() {
 
           {msg.text && <Alert variant={msg.type}>{msg.text}</Alert>}
 
-          {loading ? (
-            <div className="text-center py-5">
-              <Spinner animation="border" />
-            </div>
-          ) : (
-            <Form onSubmit={handleSubmit}>
-              <Form.Group className="mb-3">
-                <Form.Label>Title</Form.Label>
-                <Form.Control
-                  name="title"
-                  value={formData.title}
-                  onChange={handleInput}
-                  required
-                />
-              </Form.Group>
+          <Form onSubmit={handleSubmit}>
+            <Form.Group className="mb-3">
+              <Form.Label>Title</Form.Label>
+              <Form.Control
+                name="title"
+                value={formData.title}
+                onChange={handleInput}
+                required
+              />
+            </Form.Group>
 
-              <Form.Group className="mb-3">
-                <Form.Label>Description</Form.Label>
-                <Form.Control
-                  as="textarea"
-                  rows={4}
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInput}
-                  required
-                />
-              </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Description</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={4}
+                name="description"
+                value={formData.description}
+                onChange={handleInput}
+                required
+              />
+            </Form.Group>
 
-              <Form.Group className="mb-3">
-                <Form.Label>Category</Form.Label>
-                <Form.Select
-                  name="category"
-                  value={formData.category}
-                  onChange={handleInput}
-                  required
-                >
-                  <option value="">Select category</option>
-                  <option value="road">Road</option>
-                  <option value="garbage">Garbage</option>
-                  <option value="water">Water Supply</option>
-                  <option value="electricity">Electricity</option>
-                  <option value="sewage">Sewage</option>
-                  <option value="lighting">Street Lighting</option>
-                  <option value="pollution">Pollution</option>
-                  <option value="traffic">Traffic</option>
-                  <option value="other">Other</option>
-                </Form.Select>
-              </Form.Group>
-
-              <Form.Group className="mb-3">
-                <Form.Label>Priority</Form.Label>
-                <Form.Select
-                  name="priority"
-                  value={formData.priority}
-                  onChange={handleInput}
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
-                </Form.Select>
-              </Form.Group>
-
-              <Form.Group className="mb-3">
-                <Form.Label>Location</Form.Label>
-                <Form.Control
-                  name="location"
-                  value={formData.location}
-                  onChange={handleInput}
-                />
-              </Form.Group>
-
-              <Form.Group className="mb-3">
-                <Form.Label>Status</Form.Label>
-                <Form.Select
-                  name="status"
-                  value={formData.status}
-                  onChange={handleInput}
-                >
-                  <option value="submitted">Submitted</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="resolved">Resolved</option>
-                </Form.Select>
-              </Form.Group>
-
-              <Form.Group className="mb-3">
-                <Form.Label>Photo</Form.Label>
-                <Form.Control
-                  type="file"
-                  name="photo"
-                  onChange={handleInput}
-                />
-              </Form.Group>
-
-              {preview && (
-                <div className="text-center mb-3">
-                  <Image
-                    src={preview}
-                    rounded
-                    style={{
-                      width: "100%",
-                      maxHeight: 250,
-                      objectFit: "cover",
-                    }}
-                  />
-                </div>
-              )}
-
-              <Button
-                type="submit"
-                className="w-100"
-                disabled={saving}
+            <Form.Group className="mb-3">
+              <Form.Label>Category</Form.Label>
+              <Form.Select
+                name="category"
+                value={formData.category}
+                onChange={handleInput}
+                required
               >
-                {saving ? "Saving..." : "Save Changes"}
-              </Button>
-            </Form>
-          )}
+                <option value="">Select category</option>
+                <option value="road">Road</option>
+                <option value="garbage">Garbage</option>
+                <option value="water">Water Supply</option>
+                <option value="electricity">Electricity</option>
+                <option value="drainage">Drainage & Sewage</option>
+                <option value="street_light">Street Lighting</option>
+                <option value="pollution">Pollution</option>
+                <option value="traffic">Traffic</option>
+                <option value="other">Other</option>
+              </Form.Select>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Priority</Form.Label>
+              <Form.Select
+                name="priority"
+                value={formData.priority}
+                onChange={handleInput}
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </Form.Select>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Location</Form.Label>
+              <Form.Control
+                name="location"
+                value={formData.location}
+                onChange={handleInput}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Photo</Form.Label>
+              <Form.Control
+                type="file"
+                name="photo"
+                onChange={handleInput}
+              />
+            </Form.Group>
+
+            {preview && (
+              <div className="text-center mb-3">
+                <Image
+                  src={preview}
+                  rounded
+                  style={{
+                    width: "100%",
+                    maxHeight: 250,
+                    objectFit: "cover",
+                  }}
+                />
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              className="w-100"
+              disabled={saving}
+            >
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
+          </Form>
         </Card.Body>
       </Card>
     </Container>

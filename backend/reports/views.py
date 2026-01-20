@@ -1,20 +1,29 @@
 from django.shortcuts import render
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db import IntegrityError
-from rest_framework import viewsets, permissions
+
+from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
+from math import radians, cos, sin, asin, sqrt
 
 from .models import Issue, FlagReport
-from .serializers import IssueSerializer, FlagReportSerializer
-from math import radians, cos, sin, asin, sqrt
+from .serializers import (
+    ConsumerIssueSerializer,
+    ProviderIssueSerializer,
+    FlagReportSerializer,
+)
+from .permission import IsConsumer, IsProvider
 
 from ml.predict import predict_issue_category
 
 
-# ---------------------------------------------------------
-# Haversine Helper
-# ---------------------------------------------------------
+# =========================================================
+# Utility: Haversine Distance (KM)
+# =========================================================
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371
     lat1, lon1, lat2, lon2 = map(float, [lat1, lon1, lat2, lon2])
@@ -24,131 +33,46 @@ def haversine(lat1, lon1, lat2, lon2):
 
     a = (
         sin(dlat / 2) ** 2
-        + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2) ** 2
+        + cos(radians(lat1))
+        * cos(radians(lat2))
+        * sin(dlon / 2) ** 2
     )
     c = 2 * asin(min(1, sqrt(a)))
 
     return R * c
 
 
-# ---------------------------------------------------------
+# =========================================================
 # ML Category Prediction API
-# ---------------------------------------------------------
+# =========================================================
 @api_view(["POST"])
 def predict_issue_category_api(request):
-    description = request.data.get("description", "")
+    description = request.data.get("description")
+
     if not description:
-        return Response({"error": "description is required"}, status=400)
+        return Response(
+            {"error": "description is required"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     category = predict_issue_category(description)
     return Response({"category": category})
 
 
-# ---------------------------------------------------------
-# Issue ViewSet (Main API)
-# ---------------------------------------------------------
-class IssueViewSet(viewsets.ModelViewSet):
-    queryset = Issue.objects.all()
-    serializer_class = IssueSerializer
-    permission_classes = [permissions.IsAuthenticated]
+# =========================================================
+# CONSUMER ISSUE VIEWSET
+# =========================================================
+class ConsumerIssueViewSet(viewsets.ModelViewSet):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated, IsConsumer]
+    serializer_class = ConsumerIssueSerializer
 
     def get_queryset(self):
-        user = self.request.user
-        qs = Issue.objects.all()
+        return Issue.objects.filter(reported_by=self.request.user)
 
-        # ---------------- Consumer can see only their issues ----------------
-        if user.role == "consumer":
-            qs = qs.filter(reported_by=user)
-
-        # ---------------- Provider can see ONLY issues in their category ----------------
-        elif user.role == "provider":
-            if user.profession:
-                qs = qs.filter(category=user.profession)
-            else:
-                return Issue.objects.none()
-
-        # ---------------- Optional Distance Filter ----------------
-        nearby = self.request.query_params.get("nearby")
-        radius_km = self.request.query_params.get("radius_km")
-
-        if nearby:
-            try:
-                lat, lon = map(float, nearby.split(","))
-                result = []
-
-                for issue in qs:
-                    if issue.latitude and issue.longitude:
-                        dist = haversine(lat, lon, issue.latitude, issue.longitude)
-                        issue._distance = dist
-                        result.append(issue)
-
-                # Radius filter
-                if radius_km:
-                    result = [i for i in result if i._distance <= float(radius_km)]
-
-                # Sort by nearest
-                return sorted(result, key=lambda x: x._distance)
-
-            except:
-                pass
-
-        return qs
-
-    # Auto-assign reported_by
     def perform_create(self, serializer):
         serializer.save(reported_by=self.request.user)
 
-    # -----------------------------------------------------
-    # Provider → Claim Issue
-    # -----------------------------------------------------
-    @action(detail=True, methods=["post"])
-    def claim(self, request, pk=None):
-        issue = self.get_object()
-        user = request.user
-
-        if user.role != "provider":
-            return Response({"detail": "Only providers can claim issues."}, status=403)
-
-        if issue.assigned_to is not None:
-            return Response({"detail": "Issue already claimed."}, status=400)
-
-        if issue.status not in ("pending", "under_review", "assigned"):
-            return Response({"detail": "Issue cannot be claimed now."}, status=400)
-
-        issue.assigned_to = user
-        issue.status = "in_progress"
-        issue.save()
-
-        return Response({"detail": "Issue claimed successfully."})
-
-    # -----------------------------------------------------
-    # Provider → Resolve Issue
-    # -----------------------------------------------------
-    @action(detail=True, methods=["post"])
-    def resolve(self, request, pk=None):
-        issue = self.get_object()
-        user = request.user
-
-        if user.role != "provider":
-            return Response({"detail": "Only providers can resolve issues."}, status=403)
-
-        if issue.assigned_to != user:
-            return Response({"detail": "You must claim this issue first."}, status=403)
-
-        if issue.status != "in_progress":
-            return Response(
-                {"detail": "Issue must be in progress before it can be resolved."},
-                status=400,
-            )
-
-        issue.status = "resolved"
-        issue.save()
-
-        return Response({"detail": "Issue resolved successfully."})
-
-    # -----------------------------------------------------
-    # Like / Unlike
-    # -----------------------------------------------------
     @action(detail=True, methods=["post"])
     def like(self, request, pk=None):
         issue = self.get_object()
@@ -156,36 +80,152 @@ class IssueViewSet(viewsets.ModelViewSet):
 
         if user in issue.likes.all():
             issue.likes.remove(user)
-            return Response({"message": "Unliked", "likes_count": issue.likes.count()})
+            return Response(
+                {"liked": False, "likes_count": issue.likes.count()}
+            )
 
         issue.likes.add(user)
-        return Response({"message": "Liked", "likes_count": issue.likes.count()})
+        return Response(
+            {"liked": True, "likes_count": issue.likes.count()}
+        )
 
 
-# ---------------------------------------------------------
-# Flag Report ViewSet
-# ---------------------------------------------------------
+# =========================================================
+# PROVIDER ISSUE VIEWSET (FIXED)
+# =========================================================
+class ProviderIssueViewSet(viewsets.ReadOnlyModelViewSet):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated, IsProvider]
+    serializer_class = ProviderIssueSerializer
+
+    def get_queryset(self):
+        return Issue.objects.filter(
+            assigned_provider__isnull=True,
+            status="pending",
+        ).order_by("-created_at")
+
+    # ---------------- Provider Dashboard: My Issues ----------------
+    @action(detail=False, methods=["get"], url_path="my-issues")
+    def my_issues(self, request):
+        issues = Issue.objects.filter(
+            assigned_provider=request.user
+        ).order_by("-created_at")
+
+        serializer = self.get_serializer(issues, many=True)
+        return Response(serializer.data)
+
+    # ---------------- Provider Dashboard: Nearby Issues ----------------
+    @action(detail=False, methods=["get"], url_path="nearby")
+    def nearby_issues(self, request):
+        lat = request.query_params.get("lat")
+        lon = request.query_params.get("lon")
+        radius = float(request.query_params.get("radius", 10))
+
+        if not lat or not lon:
+            return Response(
+                {"detail": "lat and lon are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        issues_in_radius = []
+
+        for issue in Issue.objects.filter(
+            assigned_provider__isnull=True,
+            status="pending",
+        ):
+            if issue.latitude and issue.longitude:
+                dist = haversine(
+                    lat, lon,
+                    issue.latitude, issue.longitude
+                )
+                if dist <= radius:
+                    issue._distance = dist
+                    issues_in_radius.append(issue)
+
+        issues_in_radius.sort(key=lambda x: x._distance)
+        serializer = self.get_serializer(issues_in_radius, many=True)
+        return Response(serializer.data)
+
+    # ---------------- Claim Issue ----------------
+    @action(detail=True, methods=["post"])
+    def claim(self, request, pk=None):
+        issue = self.get_object()
+
+        if issue.assigned_provider:
+            return Response(
+                {"detail": "Issue already assigned"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        issue.assigned_provider = request.user
+        issue.status = "assigned"
+        issue.save()
+
+        return Response({"detail": "Issue claimed successfully"})
+
+    # ---------------- Start Work ----------------
+    @action(detail=True, methods=["post"])
+    def start(self, request, pk=None):
+        issue = self.get_object()
+
+        if issue.assigned_provider != request.user:
+            return Response(
+                {"detail": "Not authorized"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        issue.status = "in_progress"
+        issue.save()
+
+        return Response({"detail": "Work started"})
+
+    # ---------------- Resolve Issue ----------------
+    @action(detail=True, methods=["post"])
+    def resolve(self, request, pk=None):
+        issue = self.get_object()
+
+        if issue.assigned_provider != request.user:
+            return Response(
+                {"detail": "Not authorized"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if issue.status != "in_progress":
+            return Response(
+                {"detail": "Issue must be in progress"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        issue.status = "resolved"
+        issue.save()
+
+        return Response({"detail": "Issue resolved"})
+
+
+# =========================================================
+# FLAG REPORT VIEWSET
+# =========================================================
 class FlagReportViewSet(viewsets.ModelViewSet):
-    queryset = FlagReport.objects.all()
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated, IsConsumer]
     serializer_class = FlagReportSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    queryset = FlagReport.objects.all()
 
     def perform_create(self, serializer):
         try:
             serializer.save(reported_by=self.request.user)
         except IntegrityError:
-            return Response(
-                {"detail": "You have already flagged this issue."},
-                status=400
-            )
+            raise IntegrityError("Duplicate flag")
 
 
-# ---------------------------------------------------------
-# Moderation Dashboard (Staff Only)
-# ---------------------------------------------------------
+# =========================================================
+# STAFF MODERATION VIEW
+# =========================================================
 @staff_member_required
 def flagged_issues_list(request):
-    flagged_issues = FlagReport.objects.select_related("issue", "reported_by").all()
+    flagged_issues = FlagReport.objects.select_related(
+        "issue", "reported_by"
+    )
     return render(
         request,
         "reports/flagged_issues_list.html",

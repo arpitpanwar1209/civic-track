@@ -1,6 +1,5 @@
+import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useState } from "react";
-import BackButton from "../components/BackButton";
 import {
   Container,
   Card,
@@ -10,9 +9,8 @@ import {
   Spinner,
 } from "react-bootstrap";
 
-/**
- * Backend base = http://host/api/v1
- */
+import BackButton from "../components/BackButton";
+
 const API_BASE =
   process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api/v1";
 
@@ -21,25 +19,48 @@ export default function ResetPassword() {
   const navigate = useNavigate();
 
   const [password, setPassword] = useState("");
-  const [msg, setMsg] = useState("");
+  const [msg, setMsg] = useState({ type: "", text: "" });
   const [loading, setLoading] = useState(false);
 
-  // --------------------------------------------------
-  // Submit new password
-  // --------------------------------------------------
-  const submit = async () => {
-    if (!password.trim()) {
-      setMsg("⚠️ Please enter a new password.");
-      return;
-    }
+  // -----------------------------
+  // Guards
+  // -----------------------------
+  if (!uid || !token) {
+    return (
+      <Container className="py-5" style={{ maxWidth: 500 }}>
+        <Alert variant="danger">
+          Invalid or broken password reset link.
+        </Alert>
+      </Container>
+    );
+  }
 
-    if (password.length < 6) {
-      setMsg("⚠️ Password must be at least 6 characters long.");
+  // -----------------------------
+  // Validation
+  // -----------------------------
+  const validatePassword = (pwd) => {
+    if (pwd.length < 8) {
+      return "Password must be at least 8 characters long.";
+    }
+    if (!/[0-9!@#$%^&*]/.test(pwd)) {
+      return "Password must include a number or special character.";
+    }
+    return null;
+  };
+
+  // -----------------------------
+  // Submit
+  // -----------------------------
+  const submit = async () => {
+    setMsg({ type: "", text: "" });
+
+    const validationError = validatePassword(password);
+    if (validationError) {
+      setMsg({ type: "danger", text: `⚠️ ${validationError}` });
       return;
     }
 
     setLoading(true);
-    setMsg("");
 
     try {
       const res = await fetch(
@@ -51,28 +72,41 @@ export default function ResetPassword() {
         }
       );
 
-      const data = await res.json().catch(() => ({}));
+      let data = {};
+      try {
+        data = await res.json();
+      } catch {
+        /* ignore non-json */
+      }
 
       if (res.ok) {
-        setMsg("✅ Password reset successfully!");
+        setMsg({
+          type: "success",
+          text: "✅ Password reset successfully! Redirecting…",
+        });
         setTimeout(() => navigate("/login"), 1500);
       } else {
-        setMsg(
-          data.detail ||
-            "⚠️ Invalid or expired password reset link."
-        );
+        setMsg({
+          type: "danger",
+          text:
+            data.detail ||
+            "⚠️ Invalid or expired password reset link.",
+        });
       }
     } catch (err) {
       console.error(err);
-      setMsg("⚠️ Server error. Please try again.");
+      setMsg({
+        type: "danger",
+        text: "⚠️ Server error. Please try again later.",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  // ==================================================
+  // =============================
   // RENDER
-  // ==================================================
+  // =============================
   return (
     <Container className="py-5" style={{ maxWidth: 500 }}>
       <BackButton />
@@ -83,15 +117,16 @@ export default function ResetPassword() {
             🔐 Reset Password
           </h3>
 
-          {msg && (
-            <Alert
-              variant={msg.startsWith("✅") ? "success" : "danger"}
-            >
-              {msg}
-            </Alert>
+          {msg.text && (
+            <Alert variant={msg.type}>{msg.text}</Alert>
           )}
 
-          <Form>
+          <Form
+            onSubmit={(e) => {
+              e.preventDefault();
+              submit();
+            }}
+          >
             <Form.Group className="mb-3">
               <Form.Label>New Password</Form.Label>
               <Form.Control
@@ -105,9 +140,8 @@ export default function ResetPassword() {
             </Form.Group>
 
             <Button
+              type="submit"
               className="w-100"
-              variant="primary"
-              onClick={submit}
               disabled={loading}
             >
               {loading ? (

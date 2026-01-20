@@ -1,13 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useContext, useRef } from "react";
 import { Form, Button, Alert, Spinner } from "react-bootstrap";
 
-/**
- * Backend base = http://host/api/v1
- */
-const API_BASE =
-  process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api/v1";
+import { AuthContext } from "../auth/AuthContext";
 
 export default function SubmitIssue({ onSubmitted }) {
+  const { authedFetch } = useContext(AuthContext);
+  const predictTimer = useRef(null);
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -19,50 +18,38 @@ export default function SubmitIssue({ onSubmitted }) {
 
   const [predictedCategory, setPredictedCategory] = useState(null);
   const [loadingPrediction, setLoadingPrediction] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(null);
   const [error, setError] = useState(null);
 
-  const token = localStorage.getItem("access");
-
-  // --------------------------------------------------
-  // Handle input change
-  // --------------------------------------------------
-  const handleChange = (e) => {
-    const { name, value, files } = e.target;
-
-    if (name === "photo") {
-      setFormData((prev) => ({ ...prev, photo: files[0] }));
-      return;
+  // -----------------------------
+  // Validation
+  // -----------------------------
+  const validate = () => {
+    if (!formData.title.trim()) {
+      return "Title is required.";
     }
-
-    setFormData((prev) => ({ ...prev, [name]: value }));
-
-    // Trigger ML prediction
-    if (name === "description" && value.trim().length > 10) {
-      predictCategory(value);
+    if (!formData.description.trim()) {
+      return "Description is required.";
     }
+    if (!formData.category) {
+      return "Category is required.";
+    }
+    return null;
   };
 
-  // --------------------------------------------------
-  // Predict category (ML)
-  // --------------------------------------------------
+  // -----------------------------
+  // Predict category (debounced)
+  // -----------------------------
   const predictCategory = async (description) => {
     try {
       setLoadingPrediction(true);
 
-      const res = await fetch(
-        `${API_BASE}/reports/predict-category/`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token
-              ? { Authorization: `Bearer ${token}` }
-              : {}),
-          },
-          body: JSON.stringify({ description }),
-        }
-      );
+      const res = await authedFetch("/reports/predict-category/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description }),
+      });
 
       const data = await res.json();
 
@@ -72,8 +59,6 @@ export default function SubmitIssue({ onSubmitted }) {
           ...prev,
           category: data.predicted_category,
         }));
-      } else {
-        setPredictedCategory(null);
       }
     } catch (err) {
       console.error("Prediction error:", err);
@@ -82,41 +67,70 @@ export default function SubmitIssue({ onSubmitted }) {
     }
   };
 
-  // --------------------------------------------------
+  // -----------------------------
+  // Handle input
+  // -----------------------------
+  const handleChange = (e) => {
+    const { name, value, files } = e.target;
+
+    setSuccess(null);
+    setError(null);
+
+    if (name === "photo") {
+      setFormData((prev) => ({ ...prev, photo: files?.[0] || null }));
+      return;
+    }
+
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    if (name === "description" && value.trim().length > 20) {
+      clearTimeout(predictTimer.current);
+      predictTimer.current = setTimeout(
+        () => predictCategory(value),
+        600
+      );
+    }
+  };
+
+  // -----------------------------
   // Submit issue
-  // --------------------------------------------------
+  // -----------------------------
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
 
-    if (!token) {
-      setError("⚠️ You must be logged in to submit an issue.");
+    const validationError = validate();
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
+    setSubmitting(true);
+
     const submitData = new FormData();
     Object.entries(formData).forEach(([key, value]) => {
-      if (value !== null && value !== "")
+      if (value !== null && value !== "") {
         submitData.append(key, value);
+      }
     });
 
     try {
-      const res = await fetch(
-        `${API_BASE}/reports/issues/`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: submitData,
-        }
-      );
+      const res = await authedFetch("/reports/consumer/issues/", {
+        method: "POST",
+        body: submitData,
+      });
 
-      const data = await res.json().catch(() => null);
+      let data = {};
+      try {
+        data = await res.json();
+      } catch {}
 
       if (!res.ok) {
-        setError(data?.detail || "⚠️ Failed to submit issue.");
+        setError(
+          data.detail ||
+            "Failed to submit issue. Please check inputs."
+        );
         return;
       }
 
@@ -137,13 +151,15 @@ export default function SubmitIssue({ onSubmitted }) {
       }
     } catch (err) {
       console.error(err);
-      setError("⚠️ Network error while submitting issue.");
+      setError("Network error while submitting issue.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  // ==================================================
+  // =============================
   // RENDER
-  // ==================================================
+  // =============================
   return (
     <Form
       onSubmit={handleSubmit}
@@ -229,7 +245,7 @@ export default function SubmitIssue({ onSubmitted }) {
         />
       </Form.Group>
 
-      <Form.Group className="mb-3">
+      <Form.Group className="mb-4">
         <Form.Label>Priority</Form.Label>
         <Form.Select
           name="priority"
@@ -243,8 +259,12 @@ export default function SubmitIssue({ onSubmitted }) {
         </Form.Select>
       </Form.Group>
 
-      <Button type="submit" className="w-100">
-        Submit Issue
+      <Button
+        type="submit"
+        className="w-100"
+        disabled={submitting}
+      >
+        {submitting ? "Submitting…" : "Submit Issue"}
       </Button>
     </Form>
   );

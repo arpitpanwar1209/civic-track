@@ -1,8 +1,15 @@
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ValidationError
 from django.db import models
 
+
 class CustomUser(AbstractUser):
-    # Unified category/profession keys (match Issue.CATEGORY_CHOICES)
+
+    ROLE_CHOICES = [
+        ("consumer", "Consumer"),
+        ("provider", "Provider"),
+    ]
+
     PROFESSION_CHOICES = [
         ("road", "Road Maintenance"),
         ("garbage", "Garbage & Sanitation"),
@@ -15,30 +22,38 @@ class CustomUser(AbstractUser):
         ("other", "Other"),
     ]
 
-    ROLE_CHOICES = [
-        ("consumer", "Consumer"),
-        ("provider", "Provider"),
-    ]
-
-    # ---------------------- Role & Profession ----------------------
+    # ---------------- Role ----------------
     role = models.CharField(
         max_length=20,
         choices=ROLE_CHOICES,
-        default="consumer",
-        help_text="User role: consumer or provider"
+        default="consumer"
     )
 
+    # ---------------- Provider-only field ----------------
     profession = models.CharField(
         max_length=50,
         choices=PROFESSION_CHOICES,
         blank=True,
-        null=True,
-        help_text="Required only if role = provider"
+        null=True
     )
 
-    # ---------------------- User Profile Extras --------------------
+    # ---------------- Profile ----------------
     contact = models.CharField(max_length=15, blank=True, null=True)
     profile_pic = models.ImageField(upload_to="profile_pics/", blank=True, null=True)
 
+    def clean(self):
+        """
+        Enforce role-based rules at model level
+        """
+        if self.role == "provider" and not self.profession:
+            raise ValidationError("Provider must have a profession.")
+
+        if self.role == "consumer" and self.profession:
+            raise ValidationError("Consumer cannot have a profession.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()  # enforce clean()
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return self.username
+        return f"{self.username} ({self.role})"
