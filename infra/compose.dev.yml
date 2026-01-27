@@ -1,0 +1,55 @@
+services:
+  backend:
+    container_name: civictrack-backend
+    build:
+      context: ../backend
+      dockerfile: ../infra/docker/backend.Dockerfile
+    command: >
+      sh -c "
+      python manage.py migrate &&
+      python manage.py runserver 0.0.0.0:8000
+      "
+    volumes:
+      - ../backend:/app
+    env_file:
+      - ../backend/.env.development
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+
+  db:
+    container_name: civictrack-db
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    env_file:
+      - ../backend/.env.development
+    restart: unless-stopped
+
+  redis:
+    container_name: civictrack-redis
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  celery:
+    container_name: civictrack-celery
+    build:
+      context: ../backend
+      dockerfile: ../infra/docker/backend.Dockerfile
+    command: celery -A civictrack worker -l info
+    volumes:
+      - ../backend:/app
+    env_file:
+      - ../backend/.env.development
+    depends_on:
+      - backend
+      - redis
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

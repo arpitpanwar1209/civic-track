@@ -1,0 +1,1 @@
+FROM civictrack-backend:latest
