@@ -36,7 +36,6 @@ INSTALLED_APPS = [
     # Local apps
     "accounts",
     "reports",
-    "ml",
 
     # Third-party
     "rest_framework",
@@ -91,7 +90,7 @@ AUTH_USER_MODEL = "accounts.CustomUser"
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
-    },
+    }
 ]
 
 
@@ -116,7 +115,9 @@ SIMPLE_JWT = {
 # =====================================================
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [BASE_DIR / "static"]
+
+# ⚠️ Remove STATICFILES_DIRS unless you actually use it
+# STATICFILES_DIRS = []
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
@@ -136,7 +137,7 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 
 # =====================================================
-# Celery
+# Celery (safe defaults, no localhost)
 # =====================================================
 CELERY_BROKER_URL = os.getenv(
     "CELERY_BROKER_URL",
