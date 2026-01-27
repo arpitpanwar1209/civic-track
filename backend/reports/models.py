@@ -2,8 +2,6 @@ from django.db import models
 from django.conf import settings
 from django.contrib.auth import get_user_model
 
-from ml.predict import predict_issue_category
-
 User = get_user_model()
 
 
@@ -12,7 +10,6 @@ User = get_user_model()
 # =========================================================
 class Issue(models.Model):
 
-    # SAME KEYS as CustomUser.PROFESSION_CHOICES
     CATEGORY_CHOICES = [
         ("road", "Road"),
         ("garbage", "Garbage"),
@@ -50,6 +47,7 @@ class Issue(models.Model):
         choices=CATEGORY_CHOICES,
         blank=True,
         null=True,
+        help_text="Auto-filled by ML after creation if empty",
     )
 
     # ---------------- Location ----------------
@@ -81,7 +79,7 @@ class Issue(models.Model):
         default="pending",
     )
 
-    # ---------------- Assignment (PROVIDER ONLY) ----------------
+    # ---------------- Assignment ----------------
     assigned_provider = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -89,7 +87,6 @@ class Issue(models.Model):
         blank=True,
         related_name="assigned_issues",
         limit_choices_to={"role": "provider"},
-        help_text="Service provider handling the issue",
     )
 
     # ---------------- Reporter ----------------
@@ -116,7 +113,7 @@ class Issue(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    # Runtime-only (not stored in DB)
+    # Runtime-only (not persisted)
     _distance = None
 
     class Meta:
@@ -138,19 +135,9 @@ class Issue(models.Model):
     def distance_km(self):
         return round(self._distance, 2) if self._distance is not None else None
 
-    # ---------------- ML Auto-category ----------------
-    def save(self, *args, **kwargs):
-        if not self.category and self.description:
-            predicted = predict_issue_category(self.description)
-            self.category = (
-                predicted if predicted in dict(self.CATEGORY_CHOICES)
-                else "other"
-            )
-        super().save(*args, **kwargs)
-
 
 # =========================================================
-# ISSUE PHOTO MODEL (MULTIPLE IMAGES)
+# ISSUE PHOTO MODEL
 # =========================================================
 class IssuePhoto(models.Model):
 
@@ -167,7 +154,7 @@ class IssuePhoto(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Photo for Issue {self.issue.id}"
+        return f"Photo for Issue {self.issue_id}"
 
 
 # =========================================================
@@ -208,4 +195,4 @@ class FlagReport(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"Flag(issue={self.issue.id}, by={self.reported_by.username})"
+        return f"Flag(issue={self.issue_id}, by={self.reported_by_id})"
