@@ -9,7 +9,7 @@ import os
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # ---------------- Security (defaults) ----------------
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 # ---------------- Apps ----------------
 INSTALLED_APPS = [
