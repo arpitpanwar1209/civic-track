@@ -54,7 +54,7 @@ export default function IssueList() {
       <BackButton />
 
       <h2 className="fw-bold mb-4">
-        📝 {user?.role === "producer" ? "Relevant Issues" : "My Issues"}
+         {user?.role === "producer" ? "Relevant Issues" : "My Issues"}
       </h2>
 
       {error && <Alert variant="danger">{error}</Alert>}
@@ -101,7 +101,7 @@ export default function IssueList() {
 
               {typeof issue.distance_km === "number" && (
                 <small className="text-muted">
-                  📍 {issue.distance_km} km away
+                   {issue.distance_km} km away
                 </small>
               )}
             </ListGroup.Item>

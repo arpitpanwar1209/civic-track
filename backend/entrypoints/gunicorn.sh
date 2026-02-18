@@ -1,15 +1,17 @@
 #!/bin/sh
 set -e
 
+: "${PORT:=8000}"
+
 echo "Running migrations..."
 python manage.py migrate --noinput
 
 echo "Collecting static files..."
 python manage.py collectstatic --noinput
 
-echo "Starting Gunicorn..."
+echo "Starting Gunicorn on port ${PORT}..."
 exec gunicorn civictrack.wsgi:application \
-  --bind 0.0.0.0:8000 \
+  --bind 0.0.0.0:${PORT} \
   --workers 3 \
   --threads 2 \
-  --timeout 60
+  --timeout 120

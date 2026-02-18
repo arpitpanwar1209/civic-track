@@ -66,21 +66,21 @@ export default function Home() {
 
           <Row className="g-4 mt-3">
             <Col md={4}>
-              <h5>📍 Local Issues</h5>
+              <h5> Local Issues</h5>
               <p className="text-muted">
                 Report problems in your area and track their resolution.
               </p>
             </Col>
 
             <Col md={4}>
-              <h5>🛠️ Faster Resolution</h5>
+              <h5> Faster Resolution</h5>
               <p className="text-muted">
                 Authorities get clear, actionable reports.
               </p>
             </Col>
 
             <Col md={4}>
-              <h5>🤝 Community Driven</h5>
+              <h5>Community Driven</h5>
               <p className="text-muted">
                 Citizens and providers collaborate transparently.
               </p>

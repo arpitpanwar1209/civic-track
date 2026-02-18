@@ -18,19 +18,17 @@ DEBUG = False
 # =====================================================
 ALLOWED_HOSTS = [
     "civic-track-v2k5.onrender.com",
-    ".onrender.com",
 ]
 
 
 # =====================================================
-# Frontend / Backend URLs
+# Frontend URL
 # =====================================================
 VERCEL_FRONTEND_URL = "https://civic-track-phi.vercel.app"
-RENDER_BACKEND_URL = "https://civic-track-v2k5.onrender.com"
 
 
 # =====================================================
-# CORS / CSRF
+# CORS
 # =====================================================
 CORS_ALLOWED_ORIGINS = [
     VERCEL_FRONTEND_URL,
@@ -38,14 +36,17 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
+
+# =====================================================
+# CSRF
+# =====================================================
 CSRF_TRUSTED_ORIGINS = [
-    "https://civic-track-phi.vercel.app",
-    "https://civic-track-v2k5.onrender.com",
+    VERCEL_FRONTEND_URL,
 ]
 
 
 # =====================================================
-# Database (Neon)
+# Database (Neon / Render)
 # =====================================================
 DATABASE_URL = os.getenv("DATABASE_URL")
 
@@ -56,12 +57,13 @@ DATABASES = {
     "default": dj_database_url.parse(
         DATABASE_URL,
         conn_max_age=600,
+        ssl_require=True,
     )
 }
 
 
 # =====================================================
-# Security (Render / HTTPS)
+# Security (Render HTTPS)
 # =====================================================
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = True
