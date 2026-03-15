@@ -46,7 +46,7 @@ CSRF_TRUSTED_ORIGINS = [
 
 
 # =====================================================
-# Database (Neon / Render)
+# Database (Render / Neon)
 # =====================================================
 DATABASE_URL = os.getenv("DATABASE_URL")
 
@@ -63,9 +63,35 @@ DATABASES = {
 
 
 # =====================================================
+# Redis
+# =====================================================
+REDIS_URL = os.getenv("REDIS_URL")
+
+if not REDIS_URL:
+    raise RuntimeError("REDIS_URL is not set")
+
+
+# =====================================================
+# Celery
+# =====================================================
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
+
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
+CELERY_BROKER_USE_SSL = {"ssl_cert_reqs": None}
+CELERY_REDIS_BACKEND_USE_SSL = {"ssl_cert_reqs": None}
+
+
+# =====================================================
 # Security (Render HTTPS)
 # =====================================================
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 SECURE_SSL_REDIRECT = True
 
 SESSION_COOKIE_SECURE = True
@@ -80,3 +106,20 @@ X_FRAME_OPTIONS = "DENY"
 # Static files
 # =====================================================
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+
+# =====================================================
+# WhiteNoise (Static Serving)
+# =====================================================
+MIDDLEWARE.insert(
+    1,
+    "whitenoise.middleware.WhiteNoiseMiddleware"
+)
+
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+SECURE_SSL_REDIRECT = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+SECURE_HSTS_SECONDS = 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True

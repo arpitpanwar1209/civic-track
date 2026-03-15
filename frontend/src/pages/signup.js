@@ -25,6 +25,7 @@ export default function Signup() {
     username: "",
     email: "",
     password: "",
+    confirmPassword: "",
     role: "consumer",
     profession: "",
   });
@@ -43,26 +44,31 @@ export default function Signup() {
     }));
 
   // -----------------------------
-  // Frontend validation
+  // Validation
   // -----------------------------
   const validate = () => {
     if (!formData.username.trim()) {
       return "Username is required.";
     }
 
-    if (!formData.email.includes("@")) {
+    const emailRegex = /\S+@\S+\.\S+/;
+    if (!emailRegex.test(formData.email)) {
       return "Enter a valid email address.";
     }
 
     if (formData.password.length < 8) {
-      return "Password must be at least 8 characters long.";
+      return "Password must be at least 8 characters.";
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      return "Passwords do not match.";
     }
 
     if (
-      formData.role === "producer" &&
+      formData.role === "provider" &&
       !formData.profession.trim()
     ) {
-      return "Profession is required for producers.";
+      return "Profession is required for providers.";
     }
 
     return null;
@@ -73,6 +79,7 @@ export default function Signup() {
   // -----------------------------
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     setError("");
     setSuccess("");
 
@@ -85,6 +92,9 @@ export default function Signup() {
     setSubmitting(true);
 
     const payload = { ...formData };
+
+    delete payload.confirmPassword;
+
     if (payload.role === "consumer") {
       delete payload.profession;
     }
@@ -118,7 +128,7 @@ export default function Signup() {
         return;
       }
 
-      setSuccess("🎉 Account created! Logging you in…");
+      setSuccess("Account created successfully. Logging in...");
 
       // 2️⃣ Auto-login
       const loginRes = await fetch(`${API_BASE}/token/`, {
@@ -137,10 +147,10 @@ export default function Signup() {
         return;
       }
 
-      // 3️⃣ Persist tokens (AuthContext handles profile)
       saveTokens(loginData.access, loginData.refresh);
 
       setTimeout(() => navigate("/dashboard"), 800);
+
     } catch (err) {
       console.error(err);
       setError("Connection failed. Please try again.");
@@ -149,9 +159,6 @@ export default function Signup() {
     }
   };
 
-  // =============================
-  // RENDER
-  // =============================
   return (
     <Container className="py-4">
       <BackButton fallback="/" />
@@ -160,6 +167,7 @@ export default function Signup() {
         <Col md={6} lg={5} xl={4}>
           <Card className="shadow-sm">
             <Card.Body className="p-4 p-md-5">
+
               <h2 className="text-center fw-bold mb-4">
                 Create an Account
               </h2>
@@ -168,6 +176,7 @@ export default function Signup() {
               {error && <Alert variant="danger">{error}</Alert>}
 
               <Form onSubmit={handleSubmit}>
+
                 <Form.Group className="mb-3">
                   <Form.Label>Username</Form.Label>
                   <Form.Control
@@ -204,6 +213,18 @@ export default function Signup() {
                 </Form.Group>
 
                 <Form.Group className="mb-3">
+                  <Form.Label>Confirm Password</Form.Label>
+                  <Form.Control
+                    type="password"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    autoComplete="new-password"
+                    required
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
                   <Form.Label>I am a</Form.Label>
                   <Form.Select
                     name="role"
@@ -221,7 +242,7 @@ export default function Signup() {
 
                 {formData.role === "provider" && (
                   <Form.Group className="mb-4">
-                    <Form.Label>Select Profession</Form.Label>
+                    <Form.Label>Profession</Form.Label>
                     <Form.Select
                       name="profession"
                       value={formData.profession}
@@ -256,6 +277,7 @@ export default function Signup() {
                     "Sign Up"
                   )}
                 </Button>
+
               </Form>
 
               <div className="text-center mt-3">
@@ -264,6 +286,7 @@ export default function Signup() {
                   <Link to="/login">Log In</Link>
                 </small>
               </div>
+
             </Card.Body>
           </Card>
         </Col>

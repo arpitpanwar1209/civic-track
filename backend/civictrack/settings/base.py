@@ -5,11 +5,19 @@ Base settings for civictrack
 from pathlib import Path
 from datetime import timedelta
 import os
+from dotenv import load_dotenv
+
 
 # =====================================================
 # Paths
 # =====================================================
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+
+# =====================================================
+# Load Environment Variables
+# =====================================================
+load_dotenv(BASE_DIR / ".env.development")
 
 
 # =====================================================
@@ -48,7 +56,7 @@ INSTALLED_APPS = [
 # Middleware
 # =====================================================
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",  
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -116,9 +124,6 @@ SIMPLE_JWT = {
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# ⚠️ Remove STATICFILES_DIRS unless you actually use it
-# STATICFILES_DIRS = []
-
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
@@ -133,23 +138,31 @@ EMAIL_USE_TLS = True
 
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 
 # =====================================================
-# Celery (safe defaults, no localhost)
+# Redis
 # =====================================================
-CELERY_BROKER_URL = os.getenv(
-    "CELERY_BROKER_URL",
-    "redis://redis:6379/0",
+REDIS_URL = os.getenv(
+    "REDIS_URL",
+    "redis://localhost:6379/0"
 )
 
-CELERY_RESULT_BACKEND = os.getenv(
-    "CELERY_RESULT_BACKEND",
-    CELERY_BROKER_URL,
-)
+
+# =====================================================
+# Celery
+# =====================================================
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
 
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
+
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
+# Required for Upstash TLS connection
+CELERY_BROKER_USE_SSL = {"ssl_cert_reqs": None}
+CELERY_REDIS_BACKEND_USE_SSL = {"ssl_cert_reqs": None}

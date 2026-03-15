@@ -2,8 +2,9 @@
    1. ROOT SCOPE (HARD ISOLATION)
    ========================================= */
 .home-wrapper {
-  font-family: "Poppins", sans-serif;
-  background-color: #f8f9fa;
+  background-color: #0b0b13; /* Deep OTT-style dark background */
+  color: #ffffff;
+  font-family: "Poppins", system-ui, sans-serif;
   overflow-x: hidden;
   animation: fadeIn 0.6s ease-out forwards;
 }
@@ -17,15 +18,88 @@
 }
 
 /* =========================================
-   2. HERO SECTION (FINAL)
+   2. HEADER & NAVIGATION (PRESERVED & ADAPTED)
+   ========================================= */
+.home-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  padding: 1rem 5%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.home-brand {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  text-decoration: none;
+  letter-spacing: 1px;
+}
+
+.home-brand:hover {
+  color: #00c6ff;
+}
+
+.home-menu-btn {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+.home-menu-btn:hover {
+  color: #00c6ff;
+}
+
+.home-menu {
+  position: absolute;
+  top: 60px;
+  right: 5%;
+  background: rgba(22, 22, 37, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 0.5rem 0;
+  min-width: 180px;
+  z-index: 20;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.home-menu button {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #e0e0e0;
+  padding: 0.75rem 1.2rem;
+  text-align: left;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.home-menu button:hover {
+  background: rgba(0, 198, 255, 0.1);
+  color: #fff;
+}
+
+/* =========================================
+   3. HERO SECTION (PRODUCTION-READY FIXES)
    ========================================= */
 .home-wrapper .hero-section {
   position: relative;
-  min-height: 100vh; /* FULL viewport */
+  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-image: url("https://www.tribuneindia.com/sortd-service/imaginary/v22-01/jpg/large/high?url=dGhldHJpYnVuZS1zb3J0ZC1wcm8tcHJvZC1zb3J0ZC9tZWRpYTViZDY3YWEwLWIzOTAtMTFlZi1hZWU4LWI5OWQ1NjM5ZjgzOS5qcGc=");
+  /* Cinematic, dark city street image suitable for production */
+  background-image: url("https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?q=80&w=2000&auto=format&fit=crop");
   background-size: cover;
   background-position: center;
 }
@@ -35,206 +109,394 @@
   inset: 0;
   background: linear-gradient(
     to bottom,
-    rgba(0, 0, 0, 0.8),
-    rgba(0, 0, 0, 0.65),
-    rgba(0, 0, 0, 0.85)
+    rgba(11, 11, 19, 0.70), /* Slightly more transparent at the top */
+    rgba(11, 11, 19, 0.85),
+    rgba(11, 11, 19, 1)     /* Solid dark at the bottom to blend with the next section */
   );
+  /* The blur effect to smooth out the background and make text pop */
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  pointer-events: none;
 }
 
-/* Content */
 .home-wrapper .hero-content {
   position: relative;
   z-index: 2;
   text-align: center;
   color: #fff;
-  max-width: 520px;
+  max-width: 800px;
   padding: 0 1rem;
 }
 
 .home-wrapper .hero-title {
-  font-weight: 700;
+  font-size: 3.5rem;
+  font-weight: 900; /* Extra bold for better readability */
   margin-bottom: 1.25rem;
-  line-height: 1.3;
+  line-height: 1.2;
+  letter-spacing: -1px;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); /* Added shadow for depth */
+}
+
+.text-gradient {
+  background: linear-gradient(90deg, #00c6ff, #0072ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  /* Required for gradient text to keep its shadow */
+  filter: drop-shadow(0 2px 8px rgba(0, 114, 255, 0.3));
 }
 
 .home-wrapper .hero-sub {
+  font-size: 1.25rem;
   font-weight: 300;
   line-height: 1.6;
-  margin-bottom: 2rem;
-  opacity: 0.95;
+  margin-bottom: 2.5rem;
+  color: #e0e0e0; /* Brightened slightly for contrast */
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
 }
 
-/* Mobile typography only */
 @media (max-width: 768px) {
   .home-wrapper .hero-title {
-    font-size: 2.2rem;
+    font-size: 2.3rem; /* Adjusted for mobile */
+  }
+  .home-wrapper .hero-sub {
+    font-size: 1.1rem;
   }
 }
 
 /* =========================================
-   3. CTA GROUP
+   4. BUTTONS (CTA GROUP)
    ========================================= */
 .home-wrapper .hero-actions {
   display: flex;
-  flex-direction: column;
+  justify-content: center;
   gap: 1rem;
-  align-items: center;
+  flex-wrap: wrap;
 }
 
-/* =========================================
-   4. BUTTONS (HOME ONLY)
-   ========================================= */
-.home-wrapper .cta-btn {
-  border-radius: 999px;
-  padding: 12px 32px;
-  font-weight: 600;
-}
-
-.home-wrapper .pulse-button {
-  background-color: #ffc107;
-  border-color: #ffc107;
-  color: #000;
-  animation: pulse 2s infinite;
-}
-
-/* =========================================
-   5. ISSUE CARDS (HOME ONLY)
-   ========================================= */
-.home-wrapper .issue-card {
-  border: none;
-  border-radius: 14px;
-  background: #fff;
-  height: 100%;
-  transition: box-shadow 0.3s ease;
-}
-
-.home-wrapper .issue-card:hover {
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
-}
-
-/* =========================================
-   6. SECTION TITLES
-   ========================================= */
-.home-wrapper .section-title {
+.cta-btn {
+  border-radius: 30px;
+  padding: 14px 36px;
   font-weight: 700;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+  border: none;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+}
+
+.cta-btn.primary {
+  background: linear-gradient(90deg, #0072ff, #00c6ff);
+  color: white;
+  box-shadow: 0 8px 20px rgba(0, 114, 255, 0.4);
+}
+
+.cta-btn.primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 25px rgba(0, 114, 255, 0.6);
+  color: white;
+}
+
+.cta-btn.secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.cta-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-3px);
+  color: white;
+}
+
+/* =========================================
+   5. MOVING FLIP CARDS SECTION (GENERAL)
+   ========================================= */
+.issues-section {
+  padding: 80px 0;
+  background: #0b0b13;
+}
+
+.section-title {
+  font-size: 2.5rem;
+  font-weight: 800;
   text-align: center;
   margin-bottom: 3rem;
+  color: #fff;
+}
+
+.marquee-container {
+  overflow: hidden;
+  width: 100%;
+  padding: 20px 0;
   position: relative;
 }
 
-.home-wrapper .section-title::after {
+/* Fade edges for blending with dark background */
+.marquee-container::before,
+.marquee-container::after {
   content: "";
-  display: block;
-  width: 48px;
-  height: 4px;
-  background: #0d6efd;
-  margin: 10px auto 0;
-  border-radius: 2px;
+  position: absolute;
+  top: 0;
+  width: 150px;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.marquee-container::before {
+  left: 0;
+  background: linear-gradient(to right, #0b0b13 0%, transparent 100%);
+}
+
+.marquee-container::after {
+  right: 0;
+  background: linear-gradient(to left, #0b0b13 0%, transparent 100%);
+}
+
+.marquee-track {
+  display: flex;
+  gap: 30px;
+  width: max-content;
+  animation: scrollMarquee 25s linear infinite;
+}
+
+/* Pause animation on hover */
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes scrollMarquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); } 
+}
+
+/* 3D Flip Mechanics (Universal) */
+.flip-card {
+  background-color: transparent;
+  width: 260px;
+  height: 320px;
+  perspective: 1000px;
+  cursor: pointer;
+}
+
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transform-style: preserve-3d;
+}
+
+.flip-card:hover .flip-card-inner {
+  transform: rotateY(180deg);
+}
+
+.flip-card-front, .flip-card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+/* Original Card Front (with icon/gradient) */
+.flip-card-front {
+  background: linear-gradient(145deg, #161625, #1e1e32);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.card-icon {
+  font-size: 4rem;
+  margin-bottom: 20px;
+  filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));
+}
+
+.card-title {
+  font-weight: 700;
+  color: #e0e0e0;
+  margin: 0;
+}
+
+/* Original Card Back (blue gradient) */
+.flip-card-back {
+  background: linear-gradient(135deg, #0072ff, #00c6ff);
+  color: white;
+  transform: rotateY(180deg);
+  box-shadow: 0 10px 30px rgba(0, 114, 255, 0.4);
+}
+
+.flip-card-back h5 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin-bottom: 15px;
+}
+
+.flip-card-back p {
+  font-size: 1rem;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+
+.fast-resolution-badge {
+  margin-top: 20px;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 /* =========================================
-   7. FOOTER
+   5a. NEW IMAGE MOVING FLIP CARDS SECTION
    ========================================= */
+.issues-section.image-issues-section {
+  padding: 100px 0; 
+  background: #0b0b13; 
+}
 
+.image-marquee-track {
+  display: flex;
+  gap: 30px;
+  width: max-content;
+  animation: scrollMarquee 30s linear infinite; 
+}
 
-.home-wrapper .footer-link {
-  color: #adb5bd;
+.image-marquee-track:hover {
+  animation-play-state: paused;
+}
+
+.flip-card.image-flip-card {
+  width: 320px; 
+  height: 400px; 
+}
+
+.image-flip-card .flip-card-front {
+  background: transparent; 
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  background-size: cover;
+  background-position: center;
+  overflow: hidden; 
+  display: flex;
+  justify-content: flex-end; 
+  align-items: flex-start;
+  padding: 20px;
+}
+
+.image-flip-card .flip-card-front .card-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 0.3) 60%, transparent);
+  z-index: 1;
+}
+
+.image-flip-card .flip-card-front .card-title.text-gradient-bold {
+  color: #fff;
+  font-weight: 900;
+  font-size: 2.2rem;
+  z-index: 2;
+  position: relative;
+  margin: 0;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+  background: linear-gradient(90deg, #fff, #00c6ff 50%, #fff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.image-flip-card .flip-card-back {
+  background: linear-gradient(135deg, #0072ff, #00c6ff);
+  color: white;
+  transform: rotateY(180deg);
+  box-shadow: 0 10px 30px rgba(0, 114, 255, 0.4);
+  justify-content: center; 
+  align-items: center;
+  text-align: center;
+  padding: 30px;
+}
+
+.image-flip-card .flip-card-back h5 {
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin-bottom: 20px;
+}
+
+.image-flip-card .flip-card-back .card-desc {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #e0f2f1;
+  margin-bottom: 10px;
+}
+
+.image-flip-card .flip-card-back .card-details {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  opacity: 0.9;
+  max-width: 250px;
+}
+
+.image-flip-card .flip-card-back .fast-resolution-badge {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 25px;
+}
+
+/* =========================================
+   6. FOOTER
+   ========================================= */
+.footer-section {
+  background: #07070a;
+  padding: 60px 0 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.footer-col h5 {
+  color: #ffffff;
+  margin-bottom: 20px;
+  font-weight: 700;
+}
+
+.footer-col a {
+  display: block;
+  color: #8b8b9e;
   text-decoration: none;
-  display: block;
-  margin-bottom: 0.75rem;
+  margin-bottom: 12px;
+  transition: color 0.3s ease;
+  font-weight: 500;
 }
 
-.home-wrapper .footer-link:hover {
-  color: #ffc107;
+.footer-col a:hover {
+  color: #00c6ff;
 }
 
-/* =========================================
-   8. NAVBAR ↔ HERO INTEGRATION (CRITICAL)
-   ========================================= */
-.transition-nav {
-  transition: background-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-/* Navbar over hero (HOME ONLY) */
-.home-wrapper .transition-nav {
-  background-color: rgba(255, 255, 255, 0.85) !important;
-  backdrop-filter: blur(6px);
-}
-
-/* After scroll */
-.home-wrapper .nav-scrolled {
-  background-color: #ffffff !important;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+.footer-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 20px;
 }
 
 /* =========================================
-   9. ANIMATIONS
+   7. ANIMATIONS
    ========================================= */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes pulse {
-  0%   { box-shadow: 0 0 0 0 rgba(255,193,7,0.6); }
-  70%  { box-shadow: 0 0 0 14px rgba(255,193,7,0); }
-  100% { box-shadow: 0 0 0 0 rgba(255,193,7,0); }
-}
-
-
-.home-header {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 10;
-  padding: 0.75rem 0;
-}
-
-.home-brand {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #fff;
-  text-decoration: none;
-}
-
-.home-brand:hover {
-  color: #fff;
-}
-
-.home-menu-btn {
-  background: transparent;
-  border: none;
-  color: #fff;
-  font-size: 1.3rem;
-  cursor: pointer;
-}
-
-
-.home-menu {
-  position: absolute;
-  top: 56px;
-  right: 16px;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(8px);
-  border-radius: 10px;
-  padding: 0.5rem 0;
-  min-width: 160px;
-  z-index: 20;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
-}
-
-.home-menu button {
-  width: 100%;
-  background: transparent;
-  border: none;
-  color: #fff;
-  padding: 0.6rem 1rem;
-  text-align: left;
-  font-size: 0.95rem;
-  cursor: pointer;
-}
-
-.home-menu button:hover {
-  background: rgba(255,255,255,0.1);
 }
