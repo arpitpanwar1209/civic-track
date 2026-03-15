@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y \
 # ======================================================
 # Create Non-Root User
 # ======================================================
-RUN adduser --disabled-password --no-create-home appuser
+RUN adduser --disabled-password --gecos "" appuser
 
 # ======================================================
 # Set Work Directory
@@ -31,20 +31,20 @@ WORKDIR /app
 # ======================================================
 # Install Python Dependencies
 # ======================================================
-COPY requirements/ ./requirements/
+COPY requirements.txt .
 
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements/production.txt
+    pip install --no-cache-dir -r requirements.txt
 
 # ======================================================
 # Copy Backend Code
 # ======================================================
-COPY . .
+COPY . /app
 
 # ======================================================
-# Gunicorn Entrypoint
+# Copy Gunicorn Entrypoint
 # ======================================================
-COPY entrypoints/gunicorn.sh /gunicorn.sh
+COPY gunicorn.sh /gunicorn.sh
 RUN chmod +x /gunicorn.sh
 
 # ======================================================
@@ -58,11 +58,11 @@ RUN chown -R appuser:appuser /app /gunicorn.sh
 USER appuser
 
 # ======================================================
-# Expose Port (Render injects $PORT)
+# Expose Port (Render provides $PORT)
 # ======================================================
 EXPOSE 8000
 
 # ======================================================
-# Default Command (Web Service)
+# Default Command
 # ======================================================
 CMD ["/gunicorn.sh"]
