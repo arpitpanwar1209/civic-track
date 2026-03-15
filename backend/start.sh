@@ -1,33 +1,14 @@
-#!/usr/bin/env bash
+#!/bin/sh
+set -e
 
-set -o errexit
-set -o pipefail
-set -o nounset
+: "${PORT:=8000}"
 
-echo "Starting CivicTrack services..."
+echo "Starting Celery worker..."
+celery -A civictrack worker --loglevel=info &
 
-# ===============================
-# Start Celery Worker
-# ===============================
-echo "Starting Celery Worker..."
-celery -A config worker \
-  --loglevel=info \
-  --concurrency=2 \
-  --without-gossip \
-  --without-mingle \
-  --without-heartbeat &
-
-CELERY_PID=$!
-
-echo "Celery started with PID $CELERY_PID"
-
-# ===============================
-# Start Gunicorn
-# ===============================
 echo "Starting Gunicorn..."
-
-exec gunicorn config.wsgi:application \
-    --bind 0.0.0.0:${PORT:-8000} \
-    --workers 3 \
-    --timeout 120 \
-    --log-level info
+exec gunicorn civictrack.wsgi:application \
+  --bind 0.0.0.0:${PORT} \
+  --workers 3 \
+  --threads 2 \
+  --timeout 120
