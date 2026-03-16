@@ -5,7 +5,7 @@ import { createContext, useEffect, useState, useCallback } from "react";
 export const AuthContext = createContext(null);
 
 const API_BASE =
-  import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/v1";
+  process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api/v1";
 
 export function AuthProvider({ children }) {
 

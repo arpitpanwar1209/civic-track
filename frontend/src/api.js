@@ -4,7 +4,7 @@ import axios from "axios";
  * Backend base (versioned)
  */
 const API_BASE =
-  import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/v1";
+  process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api/v1";
 
 const axiosInstance = axios.create({
   baseURL: API_BASE,
