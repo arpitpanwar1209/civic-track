@@ -1,22 +1,17 @@
 import os
-import django
 from celery import Celery
 
-# Use environment settings
+# Set default Django settings module
 os.environ.setdefault(
     "DJANGO_SETTINGS_MODULE",
     os.getenv("DJANGO_SETTINGS_MODULE", "civictrack.settings.prod")
 )
 
-django.setup()
-
+# Create Celery app
 app = Celery("civictrack")
 
-# Load settings from Django
-app.config_from_object(
-    "django.conf:settings",
-    namespace="CELERY"
-)
+# Load Celery settings from Django settings
+app.config_from_object("django.conf:settings", namespace="CELERY")
 
-# Auto discover tasks from apps
+# Auto-discover tasks from installed apps
 app.autodiscover_tasks()
