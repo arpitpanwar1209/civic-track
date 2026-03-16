@@ -31,7 +31,7 @@ WORKDIR /app
 # ======================================================
 # Install Python Dependencies
 # ======================================================
-COPY requirements.txt .
+COPY backend/requirements.txt .
 
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
@@ -39,12 +39,12 @@ RUN pip install --upgrade pip && \
 # ======================================================
 # Copy Backend Code
 # ======================================================
-COPY . /app
+COPY backend /app
 
 # ======================================================
 # Copy Gunicorn Entrypoint
 # ======================================================
-COPY gunicorn.sh /gunicorn.sh
+COPY backend/gunicorn.sh /gunicorn.sh
 RUN chmod +x /gunicorn.sh
 
 # ======================================================
