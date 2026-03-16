@@ -45,11 +45,13 @@ COPY backend /app
 # Copy Gunicorn Entrypoint
 # ======================================================
 COPY backend/gunicorn.sh /gunicorn.sh
-RUN chmod +x /gunicorn.sh
 
 # ======================================================
-# Set Permissions
+# Fix Permissions
 # ======================================================
+RUN chmod +x /gunicorn.sh && \
+    chmod +x /app/start.sh
+
 RUN chown -R appuser:appuser /app /gunicorn.sh
 
 # ======================================================
@@ -58,11 +60,11 @@ RUN chown -R appuser:appuser /app /gunicorn.sh
 USER appuser
 
 # ======================================================
-# Expose Port (Render provides $PORT)
+# Expose Port
 # ======================================================
 EXPOSE 8000
 
 # ======================================================
-# Default Command
+# Start Container
 # ======================================================
 CMD ["/gunicorn.sh"]
