@@ -44,15 +44,13 @@ COPY backend /app
 # ======================================================
 # Copy Gunicorn Entrypoint
 # ======================================================
-COPY backend/gunicorn.sh /gunicorn.sh
+COPY backend/gunicorn.sh /app/gunicorn.sh
 
 # ======================================================
 # Fix Permissions
 # ======================================================
-RUN chmod +x /gunicorn.sh && \
-    chmod +x /app/start.sh
-
-RUN chown -R appuser:appuser /app /gunicorn.sh
+RUN chmod +x /app/gunicorn.sh && \
+    chown -R appuser:appuser /app
 
 # ======================================================
 # Switch to Non-Root User
@@ -67,4 +65,4 @@ EXPOSE 8000
 # ======================================================
 # Start Container
 # ======================================================
-CMD ["/gunicorn.sh"]
+CMD ["/app/gunicorn.sh"]

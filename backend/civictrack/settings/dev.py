@@ -8,6 +8,7 @@ import os
 
 load_dotenv(BASE_DIR / ".env.development")
 
+
 # =====================================================
 # Debug
 # =====================================================
@@ -20,7 +21,6 @@ DEBUG = True
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
-    "civic-track-v2k5.onrender.com",  # optional for testing prod API locally
 ]
 
 
@@ -30,7 +30,6 @@ ALLOWED_HOSTS = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "https://civic-track-phi.vercel.app",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -42,7 +41,6 @@ CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "https://civic-track-phi.vercel.app",
 ]
 
 
