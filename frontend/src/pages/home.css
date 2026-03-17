@@ -2,9 +2,9 @@
    1. ROOT SCOPE (HARD ISOLATION)
    ========================================= */
 .home-wrapper {
-  background-color: #0b0b13; /* Deep OTT-style dark background */
-  color: #ffffff;
-  font-family: "Poppins", system-ui, sans-serif;
+  background-color: #f8f9fa; /* Replaced deep dark with Bootstrap bg-light */
+  color: #212529; /* Stark dark text for contrast */
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif; /* Cleaner enterprise font */
   overflow-x: hidden;
   animation: fadeIn 0.6s ease-out forwards;
 }
@@ -15,6 +15,19 @@
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* Utility Class for consistency */
+.tracking-tight {
+  letter-spacing: -0.025em;
+}
+
+.tracking-wide {
+  letter-spacing: 0.05em;
+}
+
+.transition-hover {
+  transition: all 0.2s ease-in-out;
 }
 
 /* =========================================
@@ -34,14 +47,14 @@
 
 .home-brand {
   font-size: 1.5rem;
-  font-weight: 700;
+  font-weight: 800;
   color: #fff;
   text-decoration: none;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
 }
 
 .home-brand:hover {
-  color: #00c6ff;
+  color: #e0e0e0;
 }
 
 .home-menu-btn {
@@ -50,26 +63,24 @@
   color: #fff;
   font-size: 1.5rem;
   cursor: pointer;
-  transition: color 0.3s;
+  transition: color 0.2s;
 }
 
 .home-menu-btn:hover {
-  color: #00c6ff;
+  color: #e0e0e0;
 }
 
 .home-menu {
   position: absolute;
   top: 60px;
   right: 5%;
-  background: rgba(22, 22, 37, 0.95);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(33, 37, 41, 0.98); /* Solid dark bootstrap color */
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 0.5rem 0;
   min-width: 180px;
   z-index: 20;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
 }
 
 .home-menu button {
@@ -80,12 +91,13 @@
   padding: 0.75rem 1.2rem;
   text-align: left;
   font-size: 0.95rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: background 0.3s;
+  transition: background 0.2s;
 }
 
 .home-menu button:hover {
-  background: rgba(0, 198, 255, 0.1);
+  background: rgba(255, 255, 255, 0.1);
   color: #fff;
 }
 
@@ -98,10 +110,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Cinematic, dark city street image suitable for production */
+  /* Cinematic background kept as requested */
   background-image: url("https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?q=80&w=2000&auto=format&fit=crop");
   background-size: cover;
   background-position: center;
+  /* Added a bottom border to separate from light content */
+  border-bottom: 6px solid #212529; 
 }
 
 .home-wrapper .hero-overlay {
@@ -109,124 +123,19 @@
   inset: 0;
   background: linear-gradient(
     to bottom,
-    rgba(11, 11, 19, 0.70), /* Slightly more transparent at the top */
-    rgba(11, 11, 19, 0.85),
-    rgba(11, 11, 19, 1)     /* Solid dark at the bottom to blend with the next section */
+    rgba(33, 37, 41, 0.75), /* Consistent dark overlay */
+    rgba(33, 37, 41, 0.85),
+    rgba(33, 37, 41, 1)     /* Solid dark at the bottom */
   );
-  /* The blur effect to smooth out the background and make text pop */
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  pointer-events: none;
-}
-
-.home-wrapper .hero-content {
-  position: relative;
-  z-index: 2;
-  text-align: center;
-  color: #fff;
-  max-width: 800px;
-  padding: 0 1rem;
-}
-
-.home-wrapper .hero-title {
-  font-size: 3.5rem;
-  font-weight: 900; /* Extra bold for better readability */
-  margin-bottom: 1.25rem;
-  line-height: 1.2;
-  letter-spacing: -1px;
-  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); /* Added shadow for depth */
-}
-
-.text-gradient {
-  background: linear-gradient(90deg, #00c6ff, #0072ff);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  /* Required for gradient text to keep its shadow */
-  filter: drop-shadow(0 2px 8px rgba(0, 114, 255, 0.3));
-}
-
-.home-wrapper .hero-sub {
-  font-size: 1.25rem;
-  font-weight: 300;
-  line-height: 1.6;
-  margin-bottom: 2.5rem;
-  color: #e0e0e0; /* Brightened slightly for contrast */
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
-}
-
-@media (max-width: 768px) {
-  .home-wrapper .hero-title {
-    font-size: 2.3rem; /* Adjusted for mobile */
-  }
-  .home-wrapper .hero-sub {
-    font-size: 1.1rem;
-  }
-}
-
-/* =========================================
-   4. BUTTONS (CTA GROUP)
-   ========================================= */
-.home-wrapper .hero-actions {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.cta-btn {
-  border-radius: 30px;
-  padding: 14px 36px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  transition: all 0.3s ease;
-  border: none;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.05rem;
-}
-
-.cta-btn.primary {
-  background: linear-gradient(90deg, #0072ff, #00c6ff);
-  color: white;
-  box-shadow: 0 8px 20px rgba(0, 114, 255, 0.4);
-}
-
-.cta-btn.primary:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 25px rgba(0, 114, 255, 0.6);
-  color: white;
-}
-
-.cta-btn.secondary {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.cta-btn.secondary:hover {
-  background: rgba(255, 255, 255, 0.2);
-  transform: translateY(-3px);
-  color: white;
 }
 
 /* =========================================
    5. MOVING FLIP CARDS SECTION (GENERAL)
    ========================================= */
+/* The main section backgrounds are now transparent to let the light theme show */
 .issues-section {
   padding: 80px 0;
-  background: #0b0b13;
-}
-
-.section-title {
-  font-size: 2.5rem;
-  font-weight: 800;
-  text-align: center;
-  margin-bottom: 3rem;
-  color: #fff;
+  background: transparent; 
 }
 
 .marquee-container {
@@ -236,7 +145,7 @@
   position: relative;
 }
 
-/* Fade edges for blending with dark background */
+/* Fade edges updated to blend with light background (#f8f9fa) */
 .marquee-container::before,
 .marquee-container::after {
   content: "";
@@ -250,12 +159,12 @@
 
 .marquee-container::before {
   left: 0;
-  background: linear-gradient(to right, #0b0b13 0%, transparent 100%);
+  background: linear-gradient(to right, #f8f9fa 0%, transparent 100%);
 }
 
 .marquee-container::after {
   right: 0;
-  background: linear-gradient(to left, #0b0b13 0%, transparent 100%);
+  background: linear-gradient(to left, #f8f9fa 0%, transparent 100%);
 }
 
 .marquee-track {
@@ -265,7 +174,6 @@
   animation: scrollMarquee 25s linear infinite;
 }
 
-/* Pause animation on hover */
 .marquee-track:hover {
   animation-play-state: paused;
 }
@@ -289,7 +197,7 @@
   width: 100%;
   height: 100%;
   text-align: center;
-  transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); /* Smoother enterprise curve */
   transform-style: preserve-3d;
 }
 
@@ -303,7 +211,6 @@
   height: 100%;
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
-  border-radius: 20px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -311,54 +218,9 @@
   padding: 20px;
 }
 
-/* Original Card Front (with icon/gradient) */
-.flip-card-front {
-  background: linear-gradient(145deg, #161625, #1e1e32);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-}
-
-.card-icon {
-  font-size: 4rem;
-  margin-bottom: 20px;
-  filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));
-}
-
-.card-title {
-  font-weight: 700;
-  color: #e0e0e0;
-  margin: 0;
-}
-
-/* Original Card Back (blue gradient) */
+/* Front is handled inline via Bootstrap classes in JSX now, but back needs rotation */
 .flip-card-back {
-  background: linear-gradient(135deg, #0072ff, #00c6ff);
-  color: white;
   transform: rotateY(180deg);
-  box-shadow: 0 10px 30px rgba(0, 114, 255, 0.4);
-}
-
-.flip-card-back h5 {
-  font-size: 1.5rem;
-  font-weight: 800;
-  margin-bottom: 15px;
-}
-
-.flip-card-back p {
-  font-size: 1rem;
-  line-height: 1.5;
-  opacity: 0.9;
-}
-
-.fast-resolution-badge {
-  margin-top: 20px;
-  background: rgba(255, 255, 255, 0.2);
-  padding: 6px 16px;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
 }
 
 /* =========================================
@@ -366,7 +228,16 @@
    ========================================= */
 .issues-section.image-issues-section {
   padding: 100px 0; 
-  background: #0b0b13; 
+  background: #ffffff; /* Stark white to contrast the light gray wrapper */
+}
+
+/* Update image marquee fade edges to blend with white background */
+.image-issues-section .marquee-container::before {
+  background: linear-gradient(to right, #ffffff 0%, transparent 100%);
+}
+
+.image-issues-section .marquee-container::after {
+  background: linear-gradient(to left, #ffffff 0%, transparent 100%);
 }
 
 .image-marquee-track {
@@ -385,112 +256,26 @@
   height: 400px; 
 }
 
+/* Card overrides for image layout */
 .image-flip-card .flip-card-front {
-  background: transparent; 
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  background-size: cover;
-  background-position: center;
-  overflow: hidden; 
-  display: flex;
   justify-content: flex-end; 
   align-items: flex-start;
-  padding: 20px;
-}
-
-.image-flip-card .flip-card-front .card-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 0.3) 60%, transparent);
-  z-index: 1;
-}
-
-.image-flip-card .flip-card-front .card-title.text-gradient-bold {
-  color: #fff;
-  font-weight: 900;
-  font-size: 2.2rem;
-  z-index: 2;
-  position: relative;
-  margin: 0;
-  text-shadow: 0 2px 8px rgba(0,0,0,0.6);
-  background: linear-gradient(90deg, #fff, #00c6ff 50%, #fff);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  padding: 30px;
+  text-align: left;
 }
 
 .image-flip-card .flip-card-back {
-  background: linear-gradient(135deg, #0072ff, #00c6ff);
-  color: white;
-  transform: rotateY(180deg);
-  box-shadow: 0 10px 30px rgba(0, 114, 255, 0.4);
   justify-content: center; 
-  align-items: center;
-  text-align: center;
-  padding: 30px;
-}
-
-.image-flip-card .flip-card-back h5 {
-  font-size: 1.8rem;
-  font-weight: 800;
-  margin-bottom: 20px;
-}
-
-.image-flip-card .flip-card-back .card-desc {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #e0f2f1;
-  margin-bottom: 10px;
-}
-
-.image-flip-card .flip-card-back .card-details {
-  font-size: 0.95rem;
-  line-height: 1.6;
-  opacity: 0.9;
-  max-width: 250px;
-}
-
-.image-flip-card .flip-card-back .fast-resolution-badge {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 6px 16px;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-top: 25px;
+  align-items: flex-start;
+  text-align: left;
 }
 
 /* =========================================
    6. FOOTER
    ========================================= */
+/* Colors handled by Bootstrap classes in JSX, ensuring padding is correct */
 .footer-section {
-  background: #07070a;
   padding: 60px 0 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.footer-col h5 {
-  color: #ffffff;
-  margin-bottom: 20px;
-  font-weight: 700;
-}
-
-.footer-col a {
-  display: block;
-  color: #8b8b9e;
-  text-decoration: none;
-  margin-bottom: 12px;
-  transition: color 0.3s ease;
-  font-weight: 500;
-}
-
-.footer-col a:hover {
-  color: #00c6ff;
-}
-
-.footer-bottom {
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  padding-top: 20px;
 }
 
 /* =========================================

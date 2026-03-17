@@ -1,8 +1,11 @@
+// src/pages/consumer/EditIssue.jsx
 import React, { useEffect, useState, useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import BackButton from "../components/BackButton";
 import {
   Container,
+  Row,
+  Col,
   Card,
   Form,
   Button,
@@ -16,8 +19,7 @@ import { AuthContext } from "../auth/AuthContext";
 export default function EditIssue() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { authedFetch, user, loading: authLoading } =
-    useContext(AuthContext);
+  const { authedFetch, user, loading: authLoading } = useContext(AuthContext);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -70,9 +72,7 @@ export default function EditIssue() {
 
     const loadIssue = async () => {
       try {
-        const res = await authedFetch(
-          `/reports/consumer/issues/${id}/`
-        );
+        const res = await authedFetch(`/reports/consumer/issues/${id}/`);
         if (!res.ok) throw new Error();
 
         const data = await res.json();
@@ -93,7 +93,7 @@ export default function EditIssue() {
       } catch {
         setMsg({
           type: "danger",
-          text: "⚠️ Unable to load issue.",
+          text: "System Error: Unable to load issue details.",
         });
       } finally {
         setLoading(false);
@@ -118,29 +118,23 @@ export default function EditIssue() {
     });
 
     try {
-      const res = await authedFetch(
-        `/reports/consumer/issues/${id}/`,
-        {
-          method: "PATCH",
-          body: form,
-        }
-      );
+      const res = await authedFetch(`/reports/consumer/issues/${id}/`, {
+        method: "PATCH",
+        body: form,
+      });
 
       if (!res.ok) throw new Error();
 
       setMsg({
         type: "success",
-        text: "✅ Issue updated successfully!",
+        text: "Issue updated successfully.",
       });
 
-      setTimeout(
-        () => navigate("/consumer/dashboard"),
-        800
-      );
+      setTimeout(() => navigate("/consumer/dashboard"), 800);
     } catch {
       setMsg({
         type: "danger",
-        text: "⚠️ Failed to update issue.",
+        text: "Failed to update issue. Please try again.",
       });
     } finally {
       setSaving(false);
@@ -152,8 +146,9 @@ export default function EditIssue() {
   // =====================================================
   if (authLoading || loading) {
     return (
-      <Container className="py-5 text-center">
-        <Spinner animation="border" />
+      <Container className="vh-100 d-flex flex-column justify-content-center align-items-center">
+        <Spinner animation="border" variant="primary" style={{ width: '3rem', height: '3rem' }} className="mb-4" />
+        <h5 className="text-muted fw-bold tracking-wide">LOADING RECORD...</h5>
       </Container>
     );
   }
@@ -161,8 +156,9 @@ export default function EditIssue() {
   if (!user || user.role !== "consumer") {
     return (
       <Container className="py-5">
-        <Alert variant="danger">
-          You are not authorized to edit this issue.
+        <Alert variant="danger" className="border-0 shadow-sm border-start border-danger border-5">
+          <h5 className="fw-bold mb-1">Access Denied</h5>
+          <p className="mb-0">You are not authorized to edit this issue.</p>
         </Alert>
       </Container>
     );
@@ -172,115 +168,178 @@ export default function EditIssue() {
   // Render
   // =====================================================
   return (
-    <Container className="py-4" style={{ maxWidth: 700 }}>
-      <BackButton />
+    <div className="bg-light min-vh-100 pb-5">
+      
+      {/* ================================== */}
+      {/* HIGH-CONTRAST HEADER */}
+      {/* ================================== */}
+      <div className="bg-dark text-white py-4 mb-5 shadow-sm">
+        <Container style={{ maxWidth: 800 }}>
+          <div className="d-flex align-items-center gap-3">
+            <BackButton />
+            <div>
+              <h1 className="h3 mb-1 fw-bolder tracking-tight">Edit Report</h1>
+              <p className="text-secondary mb-0 small text-uppercase fw-semibold" style={{ letterSpacing: '1px' }}>
+                Record ID: {id}
+              </p>
+            </div>
+          </div>
+        </Container>
+      </div>
 
-      <Card className="shadow-sm">
-        <Card.Body>
-          <h3 className="fw-bold mb-3">✏️ Edit Issue</h3>
+      <Container style={{ maxWidth: 800 }}>
+        
+        {msg.text && (
+          <Alert 
+            variant={msg.type} 
+            className={`border-0 shadow-sm mb-4 rounded-3 border-start border-4 ${msg.type === 'success' ? 'border-success' : 'border-danger'}`}
+          >
+            <span className="fw-medium">{msg.text}</span>
+          </Alert>
+        )}
 
-          {msg.text && <Alert variant={msg.type}>{msg.text}</Alert>}
+        <Card className="border-0 shadow-sm rounded-4 bg-white">
+          <Card.Body className="p-4 p-md-5">
+            <h4 className="fw-bold text-dark mb-4 pb-2 border-bottom">Issue Details</h4>
 
-          <Form onSubmit={handleSubmit}>
-            <Form.Group className="mb-3">
-              <Form.Label>Title</Form.Label>
-              <Form.Control
-                name="title"
-                value={formData.title}
-                onChange={handleInput}
-                required
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Description</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={4}
-                name="description"
-                value={formData.description}
-                onChange={handleInput}
-                required
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Category</Form.Label>
-              <Form.Select
-                name="category"
-                value={formData.category}
-                onChange={handleInput}
-                required
-              >
-                <option value="">Select category</option>
-                <option value="road">Road</option>
-                <option value="garbage">Garbage</option>
-                <option value="water">Water Supply</option>
-                <option value="electricity">Electricity</option>
-                <option value="drainage">Drainage & Sewage</option>
-                <option value="street_light">Street Lighting</option>
-                <option value="pollution">Pollution</option>
-                <option value="traffic">Traffic</option>
-                <option value="other">Other</option>
-              </Form.Select>
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Priority</Form.Label>
-              <Form.Select
-                name="priority"
-                value={formData.priority}
-                onChange={handleInput}
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </Form.Select>
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Location</Form.Label>
-              <Form.Control
-                name="location"
-                value={formData.location}
-                onChange={handleInput}
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Photo</Form.Label>
-              <Form.Control
-                type="file"
-                name="photo"
-                onChange={handleInput}
-              />
-            </Form.Group>
-
-            {preview && (
-              <div className="text-center mb-3">
-                <Image
-                  src={preview}
-                  rounded
-                  style={{
-                    width: "100%",
-                    maxHeight: 250,
-                    objectFit: "cover",
-                  }}
+            <Form onSubmit={handleSubmit}>
+              <Form.Group className="mb-4">
+                <Form.Label className="fw-semibold text-dark">Issue Title</Form.Label>
+                <Form.Control
+                  className="py-2"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleInput}
+                  placeholder="E.g., Pothole on Main Street"
+                  required
                 />
-              </div>
-            )}
+              </Form.Group>
 
-            <Button
-              type="submit"
-              className="w-100"
-              disabled={saving}
-            >
-              {saving ? "Saving..." : "Save Changes"}
-            </Button>
-          </Form>
-        </Card.Body>
-      </Card>
-    </Container>
+              <Form.Group className="mb-4">
+                <Form.Label className="fw-semibold text-dark">Description</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={4}
+                  className="py-2"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInput}
+                  placeholder="Provide additional details about the issue..."
+                  required
+                />
+              </Form.Group>
+
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-4">
+                    <Form.Label className="fw-semibold text-dark">Category</Form.Label>
+                    <Form.Select
+                      className="py-2"
+                      name="category"
+                      value={formData.category}
+                      onChange={handleInput}
+                      required
+                    >
+                      <option value="">Select category</option>
+                      <option value="road">Road</option>
+                      <option value="garbage">Garbage</option>
+                      <option value="water">Water Supply</option>
+                      <option value="electricity">Electricity</option>
+                      <option value="drainage">Drainage & Sewage</option>
+                      <option value="street_light">Street Lighting</option>
+                      <option value="pollution">Pollution</option>
+                      <option value="traffic">Traffic</option>
+                      <option value="other">Other</option>
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-4">
+                    <Form.Label className="fw-semibold text-dark">Priority Level</Form.Label>
+                    <Form.Select
+                      className="py-2"
+                      name="priority"
+                      value={formData.priority}
+                      onChange={handleInput}
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="urgent">Urgent</option>
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+              </Row>
+
+              <Form.Group className="mb-4">
+                <Form.Label className="fw-semibold text-dark">Location</Form.Label>
+                <Form.Control
+                  className="py-2"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleInput}
+                  placeholder="Address or general area"
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-4">
+                <Form.Label className="fw-semibold text-dark">Attach Evidence (Photo)</Form.Label>
+                <Form.Control
+                  type="file"
+                  name="photo"
+                  className="py-2"
+                  onChange={handleInput}
+                  accept="image/*"
+                />
+              </Form.Group>
+
+              {preview && (
+                <div className="mb-4 p-3 bg-light rounded-3 border">
+                  <p className="text-muted small fw-semibold mb-2 text-uppercase">Image Preview</p>
+                  <div className="text-center">
+                    <Image
+                      src={preview}
+                      rounded
+                      className="shadow-sm"
+                      style={{
+                        width: "100%",
+                        maxHeight: "300px",
+                        objectFit: "cover",
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="d-flex justify-content-end mt-5 pt-3 border-top">
+                <Button
+                  variant="outline-secondary"
+                  className="px-4 py-2 fw-medium me-3"
+                  onClick={() => navigate("/consumer/dashboard")}
+                  disabled={saving}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="dark"
+                  className="px-5 py-2 fw-medium shadow-sm"
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <>
+                      <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
+                </Button>
+              </div>
+            </Form>
+          </Card.Body>
+        </Card>
+      </Container>
+    </div>
   );
 }

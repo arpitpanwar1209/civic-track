@@ -1,9 +1,10 @@
-import React, { useState, useContext, useRef } from "react";
+// src/components/SubmitIssue.jsx
+
+import React, { useState, useContext, useRef, useEffect } from "react";
 import { Form, Button, Alert, Spinner } from "react-bootstrap";
 import { AuthContext } from "../auth/AuthContext";
 
 export default function SubmitIssue({ onSubmitted }) {
-
   const { authedFetch } = useContext(AuthContext);
 
   const predictTimer = useRef(null);
@@ -25,9 +26,29 @@ export default function SubmitIssue({ onSubmitted }) {
   const [success, setSuccess] = useState(null);
   const [error, setError] = useState(null);
 
-  // -----------------------------
+  // ==========================================
+  // Get current location automatically
+  // ==========================================
+  useEffect(() => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setFormData(prev => ({
+          ...prev,
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude
+        }));
+      },
+      () => {
+        console.warn("Location permission denied");
+      }
+    );
+
+    return () => clearTimeout(predictTimer.current);
+  }, []);
+
+  // ==========================================
   // Validation
-  // -----------------------------
+  // ==========================================
   const validate = () => {
     if (!formData.title.trim()) return "Title is required.";
     if (!formData.description.trim()) return "Description is required.";
@@ -35,17 +56,16 @@ export default function SubmitIssue({ onSubmitted }) {
     return null;
   };
 
-  // -----------------------------
+  // ==========================================
   // Predict category
-  // -----------------------------
+  // ==========================================
   const predictCategory = async (description) => {
-
     try {
-
       setLoadingPrediction(true);
 
       const res = await authedFetch("/reports/predict-category/", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ description }),
       });
 
@@ -53,42 +73,32 @@ export default function SubmitIssue({ onSubmitted }) {
 
       if (res.ok && data.category) {
         setPredictedCategory(data.category);
-
         setFormData(prev => ({
           ...prev,
           category: data.category
         }));
       }
-
     } catch (err) {
-
       console.error("Prediction error:", err);
-
     } finally {
-
       setLoadingPrediction(false);
-
     }
-
   };
 
-  // -----------------------------
-  // Handle input
-  // -----------------------------
+  // ==========================================
+  // Handle form input
+  // ==========================================
   const handleChange = (e) => {
-
     const { name, value, files } = e.target;
 
     setSuccess(null);
     setError(null);
 
     if (name === "image") {
-
       setFormData(prev => ({
         ...prev,
         image: files?.[0] || null
       }));
-
       return;
     }
 
@@ -97,29 +107,27 @@ export default function SubmitIssue({ onSubmitted }) {
       [name]: value
     }));
 
+    // Debounced AI prediction
     if (name === "description" && value.trim().length > 20) {
-
       clearTimeout(predictTimer.current);
 
       predictTimer.current = setTimeout(() => {
         predictCategory(value);
       }, 600);
-
     }
-
   };
 
-  // -----------------------------
-  // Submit issue
-  // -----------------------------
+  // ==========================================
+  // Submit Issue
+  // ==========================================
   const handleSubmit = async (e) => {
-
     e.preventDefault();
 
     setError(null);
     setSuccess(null);
 
     const validationError = validate();
+
     if (validationError) {
       setError(validationError);
       return;
@@ -128,7 +136,6 @@ export default function SubmitIssue({ onSubmitted }) {
     setSubmitting(true);
 
     const submitData = new FormData();
-
     submitData.append("title", formData.title);
     submitData.append("description", formData.description);
     submitData.append("category", formData.category);
@@ -147,7 +154,6 @@ export default function SubmitIssue({ onSubmitted }) {
     }
 
     try {
-
       const res = await authedFetch("/reports/consumer/issues/", {
         method: "POST",
         body: submitData,
@@ -181,160 +187,164 @@ export default function SubmitIssue({ onSubmitted }) {
       if (typeof onSubmitted === "function") {
         onSubmitted(data);
       }
-
     } catch (err) {
-
       console.error(err);
       setError("Network error while submitting issue.");
-
     } finally {
-
       setSubmitting(false);
-
     }
-
   };
 
+  // ==========================================
+  // UI
+  // ==========================================
   return (
-
-    <Form
-      onSubmit={handleSubmit}
-      className="p-3 shadow-sm rounded bg-light"
-    >
-
-      {success && <Alert variant="success">{success}</Alert>}
-      {error && <Alert variant="danger">{error}</Alert>}
-
-      <Form.Group className="mb-3">
-        <Form.Label>Title</Form.Label>
-        <Form.Control
-          name="title"
-          value={formData.title}
-          onChange={handleChange}
-          required
-        />
-      </Form.Group>
-
-      <Form.Group className="mb-3">
-
-        <Form.Label>Description</Form.Label>
-
-        <Form.Control
-          as="textarea"
-          rows={4}
-          name="description"
-          value={formData.description}
-          onChange={handleChange}
-          required
-        />
-
-        {loadingPrediction && (
-          <div className="mt-2 text-muted small">
-            <Spinner animation="border" size="sm" /> Detecting category…
-          </div>
+    <div className="w-100">
+      <Form onSubmit={handleSubmit}>
+        
+        {success && (
+          <Alert variant="success" className="border-0 shadow-sm mb-4 rounded-3 border-start border-success border-4">
+            <span className="fw-medium">{success}</span>
+          </Alert>
         )}
-
-        {predictedCategory && (
-          <Alert variant="info" className="mt-2 py-2">
-            Suggested Category: <strong>{predictedCategory}</strong>
+        
+        {error && (
+          <Alert variant="danger" className="border-0 shadow-sm mb-4 rounded-3 border-start border-danger border-4">
+            <span className="fw-medium">{error}</span>
           </Alert>
         )}
 
-      </Form.Group>
+        <Form.Group className="mb-4">
+          <Form.Label className="fw-semibold text-dark small text-uppercase" style={{ letterSpacing: '0.5px' }}>
+            Issue Title
+          </Form.Label>
+          <Form.Control
+            className="py-2"
+            name="title"
+            placeholder="E.g., Large pothole on 5th Avenue"
+            value={formData.title}
+            onChange={handleChange}
+            required
+          />
+        </Form.Group>
 
-      <Form.Group className="mb-3">
+        <Form.Group className="mb-4">
+          <div className="d-flex justify-content-between align-items-end mb-1">
+            <Form.Label className="fw-semibold text-dark small text-uppercase mb-0" style={{ letterSpacing: '0.5px' }}>
+              Detailed Description
+            </Form.Label>
+            {loadingPrediction && (
+              <span className="text-primary small fw-medium d-flex align-items-center">
+                <Spinner animation="grow" size="sm" className="me-2" />
+                Analyzing text...
+              </span>
+            )}
+          </div>
+          
+          <Form.Control
+            as="textarea"
+            rows={4}
+            className="py-2"
+            name="description"
+            placeholder="Describe the issue in detail..."
+            value={formData.description}
+            onChange={handleChange}
+            required
+          />
 
-        <Form.Label>Category</Form.Label>
+          {predictedCategory && (
+            <div className="mt-2 bg-light border border-info rounded-2 px-3 py-2 d-flex align-items-center">
+              <span className="text-info me-2 fs-5">💡</span>
+              <span className="small text-dark fw-medium">
+                AI Suggestion: <strong className="text-info text-uppercase tracking-wide">{predictedCategory}</strong>
+              </span>
+            </div>
+          )}
+        </Form.Group>
 
-        <Form.Select
-          name="category"
-          value={formData.category}
-          onChange={handleChange}
-          required
+        <div className="row g-3 mb-4">
+          <div className="col-md-6">
+            <Form.Group>
+              <Form.Label className="fw-semibold text-dark small text-uppercase" style={{ letterSpacing: '0.5px' }}>
+                Category
+              </Form.Label>
+              <Form.Select
+                className="py-2"
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                required
+              >
+                <option value="">-- Select --</option>
+                <option value="road">Road</option>
+                <option value="garbage">Garbage</option>
+                <option value="water">Water</option>
+                <option value="electricity">Electricity</option>
+                <option value="sewage">Sewage</option>
+                <option value="lighting">Street Lighting</option>
+                <option value="pollution">Pollution</option>
+                <option value="traffic">Traffic</option>
+                <option value="other">Other</option>
+              </Form.Select>
+            </Form.Group>
+          </div>
+          
+          <div className="col-md-6">
+            <Form.Group>
+              <Form.Label className="fw-semibold text-dark small text-uppercase" style={{ letterSpacing: '0.5px' }}>
+                Priority Level
+              </Form.Label>
+              <Form.Select
+                className="py-2"
+                name="priority"
+                value={formData.priority}
+                onChange={handleChange}
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </Form.Select>
+            </Form.Group>
+          </div>
+        </div>
+
+        <Form.Group className="mb-4">
+          <Form.Label className="fw-semibold text-dark small text-uppercase" style={{ letterSpacing: '0.5px' }}>
+            Attach Photo Evidence
+          </Form.Label>
+          <Form.Control
+            className="py-2"
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            name="image"
+            onChange={handleChange}
+          />
+        </Form.Group>
+
+        <Button
+          type="submit"
+          variant="dark"
+          className="w-100 py-2 mt-3 rounded-pill fw-bold shadow-sm transition-hover"
+          disabled={submitting}
         >
-
-          <option value="">Select Category</option>
-          <option value="road">Road</option>
-          <option value="garbage">Garbage</option>
-          <option value="water">Water Supply</option>
-          <option value="electricity">Electricity</option>
-          <option value="sewage">Sewage</option>
-          <option value="lighting">Street Lighting</option>
-          <option value="pollution">Pollution</option>
-          <option value="traffic">Traffic</option>
-          <option value="other">Other</option>
-
-        </Form.Select>
-
-      </Form.Group>
-
-      <Form.Group className="mb-3">
-
-        <Form.Label>Latitude</Form.Label>
-
-        <Form.Control
-          name="latitude"
-          value={formData.latitude}
-          onChange={handleChange}
-          placeholder="Optional"
-        />
-
-      </Form.Group>
-
-      <Form.Group className="mb-3">
-
-        <Form.Label>Longitude</Form.Label>
-
-        <Form.Control
-          name="longitude"
-          value={formData.longitude}
-          onChange={handleChange}
-          placeholder="Optional"
-        />
-
-      </Form.Group>
-
-      <Form.Group className="mb-3">
-
-        <Form.Label>Photo</Form.Label>
-
-        <Form.Control
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          name="image"
-          onChange={handleChange}
-        />
-
-      </Form.Group>
-
-      <Form.Group className="mb-4">
-
-        <Form.Label>Priority</Form.Label>
-
-        <Form.Select
-          name="priority"
-          value={formData.priority}
-          onChange={handleChange}
-        >
-
-          <option value="low">Low</option>
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
-          <option value="urgent">Urgent</option>
-
-        </Form.Select>
-
-      </Form.Group>
-
-      <Button
-        type="submit"
-        className="w-100"
-        disabled={submitting}
-      >
-        {submitting ? "Submitting…" : "Submit Issue"}
-      </Button>
-
-    </Form>
+          {submitting ? (
+            <>
+              <Spinner
+                as="span"
+                animation="border"
+                size="sm"
+                role="status"
+                aria-hidden="true"
+                className="me-2"
+              />
+              Submitting Report...
+            </>
+          ) : (
+            "Submit Issue"
+          )}
+        </Button>
+      </Form>
+    </div>
   );
 }

@@ -1,7 +1,10 @@
+// src/pages/ResetPassword.jsx
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Container,
+  Row,
+  Col,
   Card,
   Form,
   Button,
@@ -27,11 +30,14 @@ export default function ResetPassword() {
   // -----------------------------
   if (!uid || !token) {
     return (
-      <Container className="py-5" style={{ maxWidth: 500 }}>
-        <Alert variant="danger">
-          Invalid or broken password reset link.
-        </Alert>
-      </Container>
+      <div className="bg-light min-vh-100 d-flex flex-column pt-5">
+        <Container style={{ maxWidth: 600 }}>
+          <Alert variant="danger" className="border-0 shadow-sm border-start border-danger border-4 p-4">
+            <h5 className="fw-bold mb-1">Invalid Link</h5>
+            <p className="mb-0">This password reset link is invalid, broken, or has expired.</p>
+          </Alert>
+        </Container>
+      </div>
     );
   }
 
@@ -56,7 +62,7 @@ export default function ResetPassword() {
 
     const validationError = validatePassword(password);
     if (validationError) {
-      setMsg({ type: "danger", text: `⚠️ ${validationError}` });
+      setMsg({ type: "danger", text: validationError });
       return;
     }
 
@@ -82,22 +88,20 @@ export default function ResetPassword() {
       if (res.ok) {
         setMsg({
           type: "success",
-          text: "✅ Password reset successfully! Redirecting…",
+          text: "Password reset successfully. Redirecting to login...",
         });
         setTimeout(() => navigate("/login"), 1500);
       } else {
         setMsg({
           type: "danger",
-          text:
-            data.detail ||
-            "⚠️ Invalid or expired password reset link.",
+          text: data.detail || "Invalid or expired password reset link.",
         });
       }
     } catch (err) {
       console.error(err);
       setMsg({
         type: "danger",
-        text: "⚠️ Server error. Please try again later.",
+        text: "Server error. Please try again later.",
       });
     } finally {
       setLoading(false);
@@ -108,59 +112,91 @@ export default function ResetPassword() {
   // RENDER
   // =============================
   return (
-    <Container className="py-5" style={{ maxWidth: 500 }}>
-      <BackButton />
+    <div className="bg-light min-vh-100 d-flex flex-column pt-4 pb-5">
+      <Container>
+        <div className="mb-4">
+          <BackButton fallback="/login" />
+        </div>
 
-      <Card className="shadow-sm">
-        <Card.Body>
-          <h3 className="fw-bold mb-3 text-center">
-            🔐 Reset Password
-          </h3>
+        <Row className="justify-content-center mt-2 mt-md-5">
+          <Col md={8} lg={6} xl={5}>
+            <Card className="border-0 shadow-sm rounded-4 bg-white overflow-hidden">
+              {/* Top accent border */}
+              <div className="bg-dark" style={{ height: "6px" }}></div>
 
-          {msg.text && (
-            <Alert variant={msg.type}>{msg.text}</Alert>
-          )}
+              <Card.Body className="p-4 p-md-5">
+                <div className="text-center mb-4 pb-2">
+                  <h2 className="fw-bolder tracking-tight text-dark mb-1">
+                    Reset Password
+                  </h2>
+                  <p className="text-muted small fw-medium">
+                    Enter a new secure password for your account
+                  </p>
+                </div>
 
-          <Form
-            onSubmit={(e) => {
-              e.preventDefault();
-              submit();
-            }}
-          >
-            <Form.Group className="mb-3">
-              <Form.Label>New Password</Form.Label>
-              <Form.Control
-                type="password"
-                placeholder="Enter your new password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="new-password"
-                required
-              />
-            </Form.Group>
+                {msg.text && (
+                  <Alert
+                    variant={msg.type}
+                    className={`border-0 shadow-sm mb-4 rounded-3 border-start border-4 ${
+                      msg.type === "success" ? "border-success" : "border-danger"
+                    }`}
+                  >
+                    <span className="fw-medium">{msg.text}</span>
+                  </Alert>
+                )}
 
-            <Button
-              type="submit"
-              className="w-100"
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <Spinner
-                    as="span"
-                    animation="border"
-                    size="sm"
-                    className="me-2"
-                  />
-                  Updating…
-                </>
-              ) : (
-                "Reset Password"
-              )}
-            </Button>
-          </Form>
-        </Card.Body>
-      </Card>
-    </Container>
+                <Form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    submit();
+                  }}
+                >
+                  <Form.Group className="mb-4">
+                    <Form.Label
+                      className="fw-semibold text-dark small text-uppercase"
+                      style={{ letterSpacing: "0.5px" }}
+                    >
+                      New Password
+                    </Form.Label>
+                    <Form.Control
+                      className="py-2"
+                      type="password"
+                      placeholder="Enter at least 8 characters"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      autoComplete="new-password"
+                      required
+                    />
+                  </Form.Group>
+
+                  <Button
+                    type="submit"
+                    variant="dark"
+                    className="w-100 py-2 rounded-pill fw-bold shadow-sm mt-2 transition-hover"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <Spinner
+                          as="span"
+                          animation="border"
+                          size="sm"
+                          role="status"
+                          aria-hidden="true"
+                          className="me-2"
+                        />
+                        Updating Securely...
+                      </>
+                    ) : (
+                      "Reset Password"
+                    )}
+                  </Button>
+                </Form>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+      </Container>
+    </div>
   );
 }

@@ -26,6 +26,7 @@ from ml.predict import predict_issue_category
 # =========================================================
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371
+
     lat1, lon1, lat2, lon2 = map(float, [lat1, lon1, lat2, lon2])
 
     dlat = radians(lat2 - lat1)
@@ -37,6 +38,7 @@ def haversine(lat1, lon1, lat2, lon2):
         * cos(radians(lat2))
         * sin(dlon / 2) ** 2
     )
+
     c = 2 * asin(min(1, sqrt(a)))
 
     return R * c
@@ -47,6 +49,7 @@ def haversine(lat1, lon1, lat2, lon2):
 # =========================================================
 @api_view(["POST"])
 def predict_issue_category_api(request):
+
     description = request.data.get("description")
 
     if not description:
@@ -56,6 +59,7 @@ def predict_issue_category_api(request):
         )
 
     category = predict_issue_category(description)
+
     return Response({"category": category})
 
 
@@ -63,18 +67,26 @@ def predict_issue_category_api(request):
 # CONSUMER ISSUE VIEWSET
 # =========================================================
 class ConsumerIssueViewSet(viewsets.ModelViewSet):
+
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated, IsConsumer]
     serializer_class = ConsumerIssueSerializer
 
     def get_queryset(self):
-        return Issue.objects.filter(reported_by=self.request.user)
+        return Issue.objects.filter(
+            reported_by=self.request.user
+        ).order_by("-created_at")
 
     def perform_create(self, serializer):
-        serializer.save(reported_by=self.request.user)
 
+        serializer.save(
+            reported_by=self.request.user
+        )
+
+    # ---------------- Like Issue ----------------
     @action(detail=True, methods=["post"])
     def like(self, request, pk=None):
+
         issue = self.get_object()
         user = request.user
 
@@ -85,38 +97,58 @@ class ConsumerIssueViewSet(viewsets.ModelViewSet):
             )
 
         issue.likes.add(user)
+
         return Response(
             {"liked": True, "likes_count": issue.likes.count()}
         )
 
 
 # =========================================================
-# PROVIDER ISSUE VIEWSET (FIXED)
+# PROVIDER ISSUE VIEWSET
 # =========================================================
 class ProviderIssueViewSet(viewsets.ReadOnlyModelViewSet):
+
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated, IsProvider]
     serializer_class = ProviderIssueSerializer
 
     def get_queryset(self):
-        return Issue.objects.filter(
+
+        user = self.request.user
+
+        queryset = Issue.objects.filter(
             assigned_provider__isnull=True,
             status="pending",
+            category=user.profession
         ).order_by("-created_at")
 
-    # ---------------- Provider Dashboard: My Issues ----------------
+        return queryset
+
+
+    # =====================================================
+    # Provider Dashboard → My Assigned Issues
+    # =====================================================
     @action(detail=False, methods=["get"], url_path="my-issues")
     def my_issues(self, request):
+
         issues = Issue.objects.filter(
             assigned_provider=request.user
         ).order_by("-created_at")
 
-        serializer = self.get_serializer(issues, many=True)
+        serializer = self.get_serializer(
+            issues,
+            many=True
+        )
+
         return Response(serializer.data)
 
-    # ---------------- Provider Dashboard: Nearby Issues ----------------
+
+    # =====================================================
+    # Nearby Issues
+    # =====================================================
     @action(detail=False, methods=["get"], url_path="nearby")
     def nearby_issues(self, request):
+
         lat = request.query_params.get("lat")
         lon = request.query_params.get("lon")
         radius = float(request.query_params.get("radius", 10))
@@ -127,28 +159,50 @@ class ProviderIssueViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        provider_profession = request.user.profession
+
         issues_in_radius = []
 
-        for issue in Issue.objects.filter(
+        issues = Issue.objects.filter(
             assigned_provider__isnull=True,
             status="pending",
-        ):
+            category=provider_profession
+        )
+
+        for issue in issues:
+
             if issue.latitude and issue.longitude:
+
                 dist = haversine(
-                    lat, lon,
-                    issue.latitude, issue.longitude
+                    lat,
+                    lon,
+                    issue.latitude,
+                    issue.longitude
                 )
+
                 if dist <= radius:
+
                     issue._distance = dist
                     issues_in_radius.append(issue)
 
-        issues_in_radius.sort(key=lambda x: x._distance)
-        serializer = self.get_serializer(issues_in_radius, many=True)
+        issues_in_radius.sort(
+            key=lambda x: x._distance
+        )
+
+        serializer = self.get_serializer(
+            issues_in_radius,
+            many=True
+        )
+
         return Response(serializer.data)
 
-    # ---------------- Claim Issue ----------------
+
+    # =====================================================
+    # Claim Issue
+    # =====================================================
     @action(detail=True, methods=["post"])
     def claim(self, request, pk=None):
+
         issue = self.get_object()
 
         if issue.assigned_provider:
@@ -157,15 +211,26 @@ class ProviderIssueViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # department validation
+        if issue.category != request.user.profession:
+            return Response(
+                {"detail": "You cannot claim this issue category"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         issue.assigned_provider = request.user
         issue.status = "assigned"
         issue.save()
 
         return Response({"detail": "Issue claimed successfully"})
 
-    # ---------------- Start Work ----------------
+
+    # =====================================================
+    # Start Work
+    # =====================================================
     @action(detail=True, methods=["post"])
     def start(self, request, pk=None):
+
         issue = self.get_object()
 
         if issue.assigned_provider != request.user:
@@ -179,9 +244,13 @@ class ProviderIssueViewSet(viewsets.ReadOnlyModelViewSet):
 
         return Response({"detail": "Work started"})
 
-    # ---------------- Resolve Issue ----------------
+
+    # =====================================================
+    # Resolve Issue
+    # =====================================================
     @action(detail=True, methods=["post"])
     def resolve(self, request, pk=None):
+
         issue = self.get_object()
 
         if issue.assigned_provider != request.user:
@@ -206,14 +275,19 @@ class ProviderIssueViewSet(viewsets.ReadOnlyModelViewSet):
 # FLAG REPORT VIEWSET
 # =========================================================
 class FlagReportViewSet(viewsets.ModelViewSet):
+
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated, IsConsumer]
     serializer_class = FlagReportSerializer
     queryset = FlagReport.objects.all()
 
     def perform_create(self, serializer):
+
         try:
-            serializer.save(reported_by=self.request.user)
+            serializer.save(
+                reported_by=self.request.user
+            )
+
         except IntegrityError:
             raise IntegrityError("Duplicate flag")
 
@@ -223,9 +297,12 @@ class FlagReportViewSet(viewsets.ModelViewSet):
 # =========================================================
 @staff_member_required
 def flagged_issues_list(request):
+
     flagged_issues = FlagReport.objects.select_related(
-        "issue", "reported_by"
+        "issue",
+        "reported_by"
     )
+
     return render(
         request,
         "reports/flagged_issues_list.html",

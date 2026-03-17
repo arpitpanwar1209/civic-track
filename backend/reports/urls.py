@@ -17,22 +17,21 @@ app_name = "reports"
 # Routers
 # =========================================================
 
-consumer_router = DefaultRouter()
-consumer_router.register(
-    r"issues",
+router = DefaultRouter()
+
+router.register(
+    r"consumer/issues",
     ConsumerIssueViewSet,
     basename="consumer-issues",
 )
 
-provider_router = DefaultRouter()
-provider_router.register(
-    r"issues",
+router.register(
+    r"provider/issues",
     ProviderIssueViewSet,
     basename="provider-issues",
 )
 
-flag_router = DefaultRouter()
-flag_router.register(
+router.register(
     r"flags",
     FlagReportViewSet,
     basename="flags",
@@ -40,43 +39,28 @@ flag_router.register(
 
 
 # =========================================================
-# URL Patterns (API ONLY)
+# URL Patterns
 # =========================================================
 urlpatterns = [
 
-    # ---------------- Consumer APIs ----------------
-    path(
-        "consumer/",
-        include(consumer_router.urls),
-    ),
+    # ---------------- API Router ----------------
+    path("", include(router.urls)),
 
-    # ---------------- Provider APIs ----------------
-    path(
-        "provider/",
-        include(provider_router.urls),
-    ),
-
-    # ---------------- Flag APIs ----------------
-    path(
-        "flags/",
-        include(flag_router.urls),
-    ),
-
-    # ---------------- Moderation (Staff only) ----------------
+    # ---------------- Moderation ----------------
     path(
         "moderation/flags/",
         flagged_issues_list,
         name="flagged_issues_list",
     ),
 
-    # ---------------- Utility ----------------
+    # ---------------- ML Utility ----------------
     path(
         "predict-category/",
         predict_issue_category_api,
         name="predict-category",
     ),
 
-    # Optional success page (OK to keep)
+    # Optional success page
     path(
         "success/",
         lambda req: render(req, "reports/success.html"),

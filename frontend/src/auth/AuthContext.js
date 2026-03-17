@@ -7,68 +7,107 @@ export const AuthContext = createContext(null);
 const API_BASE =
   process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api/v1";
 
+let refreshPromise = null;
+
 export function AuthProvider({ children }) {
 
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // =====================================================
+  // ============================================
   // Save Tokens
-  // =====================================================
+  // ============================================
+
   const saveTokens = useCallback((access, refresh) => {
+
     localStorage.setItem("access", access);
-    localStorage.setItem("refresh", refresh);
+
+    if (refresh) {
+      localStorage.setItem("refresh", refresh);
+    }
+
   }, []);
 
   const setAccess = useCallback((access) => {
     localStorage.setItem("access", access);
   }, []);
 
-  // =====================================================
+  // ============================================
   // Logout
-  // =====================================================
+  // ============================================
+
   const logout = useCallback(() => {
+
     localStorage.removeItem("access");
     localStorage.removeItem("refresh");
+
     setUser(null);
+
   }, []);
 
-  // =====================================================
-  // Refresh Access Token
-  // =====================================================
+  // ============================================
+  // Refresh Access Token (with lock)
+  // ============================================
+
   const refreshAccessToken = useCallback(async () => {
+
+    if (refreshPromise) return refreshPromise;
 
     const refresh = localStorage.getItem("refresh");
 
     if (!refresh) throw new Error("No refresh token");
 
-    const res = await fetch(`${API_BASE}/token/refresh/`, {
+    refreshPromise = fetch(`${API_BASE}/token/refresh/`, {
+
       method: "POST",
+
       headers: {
         "Content-Type": "application/json"
       },
+
       body: JSON.stringify({ refresh })
-    });
 
-    if (!res.ok) throw new Error("Refresh failed");
+    })
+      .then(async (res) => {
 
-    const data = await res.json();
+        if (!res.ok) throw new Error("Refresh failed");
 
-    localStorage.setItem("access", data.access);
+        const data = await res.json();
 
-    return data.access;
+        localStorage.setItem("access", data.access);
+
+        if (data.refresh) {
+          localStorage.setItem("refresh", data.refresh);
+        }
+
+        return data.access;
+
+      })
+      .finally(() => {
+
+        refreshPromise = null;
+
+      });
+
+    return refreshPromise;
 
   }, []);
 
-  // =====================================================
+  // ============================================
   // Authenticated Fetch
-  // =====================================================
+  // ============================================
+
   const authedFetch = useCallback(
+
     async (path, options = {}) => {
+
+      const cleanPath = path.startsWith("/")
+        ? path
+        : `/${path}`;
 
       const url = path.startsWith("http")
         ? path
-        : `${API_BASE}${path}`;
+        : `${API_BASE}${cleanPath}`;
 
       const makeRequest = (token) => {
 
@@ -77,7 +116,6 @@ export function AuthProvider({ children }) {
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         };
 
-        // IMPORTANT: do not set content-type for FormData
         if (!(options.body instanceof FormData)) {
           headers["Content-Type"] = "application/json";
         }
@@ -86,13 +124,13 @@ export function AuthProvider({ children }) {
           ...options,
           headers
         });
+
       };
 
       let token = localStorage.getItem("access");
 
       let res = await makeRequest(token);
 
-      // If access token expired
       if (res.status === 401) {
 
         try {
@@ -103,42 +141,53 @@ export function AuthProvider({ children }) {
 
         } catch (err) {
 
+          console.error("Auth refresh failed:", err);
+
           logout();
 
-          throw new Error("Authentication failed");
+          throw err;
 
         }
+
       }
 
       return res;
 
     },
+
     [refreshAccessToken, logout]
+
   );
 
-  // =====================================================
+  // ============================================
   // Load User Profile
-  // =====================================================
+  // ============================================
+
   const loadUser = useCallback(async () => {
 
     const token = localStorage.getItem("access");
 
     if (!token) {
+
       setLoading(false);
+
       return;
+
     }
 
     try {
 
       const res = await authedFetch("/accounts/profile/");
 
-      if (!res.ok) throw new Error("Profile failed");
+      if (!res.ok) throw new Error("Profile request failed");
 
       const data = await res.json();
 
       setUser(data);
 
-    } catch {
+    } catch (err) {
+
+      console.error("Profile load failed:", err);
 
       logout();
 
@@ -150,9 +199,10 @@ export function AuthProvider({ children }) {
 
   }, [authedFetch, logout]);
 
-  // =====================================================
-  // Init (Load user on app start)
-  // =====================================================
+  // ============================================
+  // Initialize Auth
+  // ============================================
+
   useEffect(() => {
 
     loadUser();
@@ -160,6 +210,7 @@ export function AuthProvider({ children }) {
   }, [loadUser]);
 
   return (
+
     <AuthContext.Provider
       value={{
         user,
@@ -171,7 +222,11 @@ export function AuthProvider({ children }) {
         setAccess
       }}
     >
+
       {children}
+
     </AuthContext.Provider>
+
   );
+
 }
